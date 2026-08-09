@@ -1,9 +1,8 @@
 import { MapPin } from "lucide-react";
-import { rooms } from "@/features/rooms/data/rooms.jsx";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 
 export default function RoomSelector() {
-  const { roomId, setRoom } = useWorkspace();
+  const { rooms, roomId, setRoom } = useWorkspace();
 
   return (
     <div className="flex items-center gap-3">

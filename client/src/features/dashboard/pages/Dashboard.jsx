@@ -1,19 +1,20 @@
 import { useState } from "react";
-import { LogOut, MonitorPlay, X, AppWindow, RotateCcw } from "lucide-react";
+import { LogOut, MonitorPlay, X, RotateCcw } from "lucide-react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
-import LayoutSelector from "@/features/layouts/components/LayoutSelector.jsx";
 import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
+import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { resetAll } = useWorkspace();
   const [present, setPresent] = useState(false);
+  const [showCatalogue, setShowCatalogue] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
@@ -74,7 +75,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 py-4">
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 px-4 py-2">
         {!present && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <RoomSelector />
@@ -85,31 +86,47 @@ export default function Dashboard() {
           className={`grid flex-1 gap-4 ${
             present
               ? "grid-cols-1"
-              : "grid-cols-1 lg:grid-cols-[1fr_380px]"
+              : "grid-cols-1 lg:grid-cols-[1fr_300px]"
           }`}
         >
-          <div className={`flex flex-col gap-4 ${present ? "min-h-[calc(100vh-140px)]" : "min-h-[520px]"}`}>
-            {!present && <LayoutSelector />}
+          <div className={`flex flex-col ${present ? "min-h-[calc(100vh-140px)]" : "min-h-0 flex-1"}`}>
             <div className="min-h-0 flex-1">
-              <Visualizer />
+              <Visualizer present={present} />
             </div>
           </div>
 
           {!present && (
-            <div className="min-h-[420px] lg:min-h-0">
-              <TileCatalogue />
+            <div className="min-h-0 lg:max-h-[calc(100vh-120px)]">
+              <TileSwapPanel onOpenCatalogue={() => setShowCatalogue(true)} />
             </div>
           )}
         </div>
-
-        <footer className="flex items-center justify-between pb-2 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <AppWindow size={12} />
-            Digital Tile Catalogue &amp; Visualizer
-          </span>
-          <span>Internal use only</span>
-        </footer>
       </main>
+
+      {showCatalogue && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowCatalogue(false)}
+        >
+          <div
+            className="animate-modal-in flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h2 className="text-sm font-bold text-slate-800">Full Tile Catalogue</h2>
+              <button
+                onClick={() => setShowCatalogue(false)}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <TileCatalogue />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getTile } from "@/features/catalogue/data/tiles.js";
-import { getRoom } from "@/features/rooms/data/rooms.jsx";
-import { surfaces } from "@/features/layouts/data/surfaces.js";
+import { getRoom, rooms } from "@/features/rooms/data/rooms.jsx";
 
 const WorkspaceContext = createContext(null);
 
@@ -12,7 +11,6 @@ function loadPrefs() {
     roomId: "living-room",
     surface: "Floor",
     applied: {},
-    catalogueDark: false,
   };
   try {
     const raw = localStorage.getItem(PREFS_KEY);
@@ -29,8 +27,15 @@ export function WorkspaceProvider({ children }) {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
   }, [prefs]);
 
-  const setRoom = (roomId) =>
-    setPrefs((p) => ({ ...p, roomId, surface: surfaces[0] }));
+  const room = useMemo(() => {
+    return rooms.find((x) => x.id === prefs.roomId) || rooms[0];
+  }, [prefs.roomId]);
+
+  const surfaces = ["Floor", "Wall", "Accent Wall"];
+
+  const setRoom = (roomId) => {
+    setPrefs((p) => ({ ...p, roomId, surface: "Floor" }));
+  };
 
   const setSurface = (surface) => setPrefs((p) => ({ ...p, surface }));
 
@@ -47,13 +52,8 @@ export function WorkspaceProvider({ children }) {
       return { ...p, applied };
     });
 
-  const toggleCatalogueDark = () =>
-    setPrefs((p) => ({ ...p, catalogueDark: !p.catalogueDark }));
-
   const resetAll = () =>
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, catalogueDark: false });
-
-  const room = useMemo(() => getRoom(prefs.roomId), [prefs.roomId]);
+    setPrefs({ roomId: "living-room", surface: "Floor", applied: {} });
 
   const appliedTiles = useMemo(() => {
     const map = {};
@@ -66,17 +66,17 @@ export function WorkspaceProvider({ children }) {
   const activeTile = appliedTiles[prefs.surface] || null;
 
   const value = {
+    rooms,
     room,
     roomId: prefs.roomId,
     setRoom,
+    surfaces,
     surface: prefs.surface,
     setSurface,
     appliedTiles,
     activeTile,
     applyTile,
     removeTile,
-    catalogueDark: prefs.catalogueDark,
-    toggleCatalogueDark,
     resetAll,
   };
 

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { Search, Moon, Sun } from "lucide-react";
+import { Search, Grid3X3 } from "lucide-react";
 import { tiles, categories, finishes, materials } from "@/features/catalogue/data/tiles.js";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import TileCard from "@/features/catalogue/components/TileCard.jsx";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileCatalogue() {
-  const { catalogueDark, toggleCatalogueDark, surface, applyTile } = useWorkspace();
+  const { surface, applyTile } = useWorkspace();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [finish, setFinish] = useState("All Finishes");
@@ -25,65 +25,42 @@ export default function TileCatalogue() {
     });
   }, [query, category, finish, material]);
 
-  const dark = catalogueDark;
+  const displayed = filtered;
 
   return (
-    <section
-      className={`flex h-full flex-col rounded-2xl border p-4 transition-colors ${
-        dark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
-      }`}
-    >
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 transition-colors">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <div>
-          <h2
-            className={`text-sm font-bold ${dark ? "text-slate-100" : "text-slate-800"}`}
-          >
+          <h2 className="text-sm font-bold text-slate-800">
             Tile Catalogue
           </h2>
-          <p className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
-            {filtered.length} of {tiles.length} tiles
+          <p className="text-[10px] text-slate-500">
+            {displayed.length} of {tiles.length} tiles
           </p>
         </div>
-        <button
-          onClick={toggleCatalogueDark}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-            dark
-              ? "border-slate-700 bg-slate-800 text-amber-300 hover:bg-slate-700"
-              : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-          }`}
-          title="Toggle dark browsing mode"
-        >
-          {dark ? <Sun size={13} /> : <Moon size={13} />}
-          <span className="hidden sm:inline">{dark ? "Light" : "Dark"}</span>
-        </button>
       </div>
 
-      <div className="relative mb-3">
-        <Search
-          size={15}
-          className={`absolute left-3 top-1/2 -translate-y-1/2 ${dark ? "text-slate-500" : "text-slate-400"}`}
-        />
+      <div className="relative mb-2">
+        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
-          className={`input-field pl-9 ${dark ? "border-slate-700 bg-slate-800 text-slate-100 placeholder:text-slate-500" : ""}`}
-          placeholder="Search tiles, materials, finishes…"
+          className="input-field pl-8 text-xs"
+          placeholder="Search tiles, materials…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
-      <div className="tile-scrollbar -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1">
+      <div className="tile-scrollbar -mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-0.5">
         {categories.map((c) => {
           const active = category === c.id;
           return (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${
                 active
                   ? "bg-brand-600 text-white shadow-card"
-                  : dark
-                    ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {c.label}
@@ -92,9 +69,9 @@ export default function TileCatalogue() {
         })}
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap gap-1.5">
         <select
-          className={`input-field w-auto text-xs ${dark ? "border-slate-700 bg-slate-800 text-slate-200" : ""}`}
+          className="input-field w-auto text-[10px]"
           value={finish}
           onChange={(e) => setFinish(e.target.value)}
         >
@@ -105,7 +82,7 @@ export default function TileCatalogue() {
           ))}
         </select>
         <select
-          className={`input-field w-auto text-xs ${dark ? "border-slate-700 bg-slate-800 text-slate-200" : ""}`}
+          className="input-field w-auto text-[10px]"
           value={material}
           onChange={(e) => setMaterial(e.target.value)}
         >
@@ -118,18 +95,17 @@ export default function TileCatalogue() {
       </div>
 
       <div
-        className={`tile-scrollbar -mr-1 flex-1 space-y-2.5 overflow-y-auto pr-1 ${
-          filtered.length === 0 ? "flex items-center justify-center" : ""
+        className={`tile-scrollbar -mr-1 flex-1 space-y-2 overflow-y-auto pr-1 ${
+          displayed.length === 0 ? "flex items-center justify-center" : ""
         }`}
       >
-        {filtered.length === 0 && (
-          <div className="text-center text-sm text-slate-400">No tiles match your filters.</div>
+        {displayed.length === 0 && (
+          <div className="text-center text-xs text-slate-400">No tiles match your filters.</div>
         )}
-        {filtered.map((tile) => (
+        {displayed.map((tile) => (
           <TileCard
             key={tile.id}
             tile={tile}
-            dark={dark}
             onSelect={() => setDetail(tile)}
             onApply={() => applyTile(tile.id, surface)}
           />

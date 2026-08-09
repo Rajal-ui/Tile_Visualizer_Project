@@ -46,7 +46,7 @@ export function patternFor(tile, id) {
       const w = 2 * (pw + g);
       const h = 2 * (ph + g);
       const off = Math.round((pw + g) / 2);
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">
           <rect width="${w}" height="${h}" fill="${grout}"/>
           <polygon points="${0},${0} ${pw},${0} ${pw},${ph} ${0},${ph}" fill="url(#${tpId})"/>
@@ -59,7 +59,7 @@ export function patternFor(tile, id) {
     case "diagonal": {
       const P = Math.round(pw * Math.SQRT2) + g * 2;
       const half = pw / 2;
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${P}" height="${P}" patternUnits="userSpaceOnUse">
           <rect width="${P}" height="${P}" fill="${grout}"/>
           <g transform="rotate(45)">
@@ -76,7 +76,7 @@ export function patternFor(tile, id) {
       const M = Math.round((L + W) / Math.SQRT2) + g * 2;
       const L2 = L / 2;
       const W2 = W / 2;
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${M}" height="${M}" patternUnits="userSpaceOnUse">
           <rect width="${M}" height="${M}" fill="${grout}"/>
           <g transform="rotate(45)">
@@ -105,7 +105,7 @@ export function patternFor(tile, id) {
             `<polygon points="${hexPoints(cx, cy, r - 1)}" fill="url(#${tpId})"/>`
         )
         .join("");
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">
           <rect width="${w}" height="${h}" fill="${grout}"/>
           ${hexes}
@@ -114,7 +114,7 @@ export function patternFor(tile, id) {
     case "large": {
       const w = pw + g * 2;
       const h = ph + g * 2;
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">
           <rect width="${w}" height="${h}" fill="${grout}"/>
           <polygon points="${g},${g} ${pw + g},${g} ${pw + g},${ph + g} ${g},${ph + g}" fill="url(#${tpId})"/>
@@ -124,7 +124,7 @@ export function patternFor(tile, id) {
     default: {
       const w = pw + g;
       const h = ph + g;
-      return `
+      return `${tPat}
         <pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">
           <rect width="${w}" height="${h}" fill="${grout}"/>
           <polygon points="0,0 ${pw},0 ${pw},${ph} 0,${ph}" fill="url(#${tpId})"/>

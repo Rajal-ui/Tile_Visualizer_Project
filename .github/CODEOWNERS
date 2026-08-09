@@ -1,0 +1,23 @@
+# Default reviewer for all repository files
+* @Rajal-ui
+
+# Client application
+/client/ @Rajal-ui
+
+# Server application
+/server/ @Rajal-ui
+
+# Shared modules
+/shared/ @Rajal-ui
+
+# Documentation
+/docs/ @Rajal-ui
+
+# Scripts and tests
+/scripts/ @Rajal-ui
+/tests/ @Rajal-ui
+
+# Repository and GitHub configuration
+/.github/ @Rajal-ui
+/package.json @Rajal-ui
+/package-lock.json @Rajal-ui

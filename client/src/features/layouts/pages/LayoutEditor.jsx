@@ -177,10 +177,6 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) 
           : null
       );
 
-      if (canvasRef.current && base) {
-        canvasRef.current.width = base.naturalWidth;
-        canvasRef.current.height = base.naturalHeight;
-      }
       setLoaded(!!base);
       setLoading(false);
       setVersion((v) => v + 1);
@@ -383,9 +379,14 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) 
     const canvas = canvasRef.current;
     if (!canvas || !loaded || !baseImgRef.current) return;
 
+    const W = baseImgRef.current.naturalWidth;
+    const H = baseImgRef.current.naturalHeight;
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width = W;
+      canvas.height = H;
+    }
+
     const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(baseImgRef.current, 0, 0, W, H);
 

@@ -169,7 +169,12 @@ export async function compositeAllZones({ background, foreground, zones, applied
   for (const zone of zones) {
     const materialSrc = resolveMaterialSrc(zone, appliedTiles);
     const planes = (zone.planes || []).filter((p) => (p.polygon || []).length >= 3);
-    if (!materialSrc || planes.length === 0) continue;
+    if (!materialSrc || planes.length === 0) {
+      console.debug(
+        `[composite] skip zone "${zone.label}" — material: ${materialSrc ? "ok" : "none"}, renderable planes: ${planes.length}`
+      );
+      continue;
+    }
 
     let materialImg;
     try {
@@ -180,7 +185,11 @@ export async function compositeAllZones({ background, foreground, zones, applied
     }
 
     for (const plane of planes) {
-      applyPlane(ctx, plane, { baseImg, materialImg, W, H });
+      try {
+        applyPlane(ctx, plane, { baseImg, materialImg, W, H });
+      } catch (e) {
+        console.error(`[composite] plane render failed for zone "${zone.label}":`, e);
+      }
     }
   }
 

@@ -30,9 +30,6 @@ export default function Dashboard() {
               <h1 className="text-sm font-extrabold tracking-tight text-slate-900">
                 Tile<span className="text-brand-600">Visualizer</span>
               </h1>
-              <p className="hidden text-[11px] text-slate-400 sm:block">
-                Admin Console
-              </p>
             </div>
           </div>
 

@@ -22,9 +22,19 @@ export function useLayout(roomId) {
     setLayout(getLayout(roomId));
     fetchLayout(roomId)
       .then((cfg) => {
-        if (!cancelled) setLayout(cfg);
+        if (!cancelled) {
+          setLayout(cfg);
+          console.debug(
+            `[useLayout] ${roomId}: backend — zones ${cfg.zones?.length ?? 0}, planes ${cfg.zones?.flatMap((z) => z.planes || []).length ?? 0}`
+          );
+        }
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (!cancelled) {
+          setLayout(getLayout(roomId));
+          console.debug(`[useLayout] ${roomId}: backend unavailable, using seed (${e.message})`);
+        }
+      });
     return () => {
       cancelled = true;
     };

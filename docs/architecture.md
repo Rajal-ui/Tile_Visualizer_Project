@@ -2,9 +2,9 @@
 
 ## Current state
 
-**Tile Visualizer** is a client-rendered React SPA backed by static (procedurally
-generated) data. There is no backend API yet; the scaffolded Express server only
-exposes `/health`.
+**Tile Visualizer** is a client-rendered React SPA. Photo-layout geometry lives
+in the backend (an Express API serving `/api/layouts/*` from local disk storage);
+tile textures and the CSS-scene rooms remain procedurally/static on the client.
 
 ### Client (`client/`)
 
@@ -18,15 +18,20 @@ exposes `/health`.
 - **Workspace state**: `store/workspace.context.jsx` provides `useWorkspace()`
   with the selected room, active surface, applied tiles, and catalogue dark mode,
   persisted to `localStorage` (`tv_prefs`). Photo-based rooms derive their tileable
-  surfaces from the layout's zone labels (Floor/Wall/Counter...).
+  surfaces from the layout's zone labels (Floor/Wall/Counter...). Layouts are
+  resolved via `useLayout()` (`features/rooms/hooks/useLayout.js`), which fetches
+  the backend-served config and falls back to the static seed
+  (`features/rooms/data/layouts.js`).
 - **Rendering** — two paths:
   1. **CSS photo rooms** (`features/visualizer/pages/Visualizer.jsx` →
      `PhotoViewer`): 3-layer CSS perspective — `bg.jpg`, a CSS-3D-transformed tile
      layer, then `fg.png` on top. Used by the existing SVG-scene rooms (Living
      Room, Bedroom, etc.), untouched by the 2-layer rebuild.
   2. **2-layer canvas layouts** (`features/visualizer/pages/RoomCanvas.jsx` →
-     `features/visualizer/lib/canvas-compositor.js`): homography-warped tile per
-     zone composited on canvas. Used by photo-based layouts (see below).
+     `features/visualizer/lib/canvas-compositor.js`): per-plane homography-warped,
+     polygon-masked tile composited on canvas. Used by photo-based layouts (see
+     below). Polygon rasterization + feathering lives in
+     `features/visualizer/lib/polygon.js`.
   Tile textures are procedurally generated SVG data-URIs (`lib/textures.js`) —
   no static image assets are required today.
 - **Layout editor** (`features/layouts/pages/LayoutEditor.jsx`): admin tool that
@@ -40,9 +45,10 @@ exposes `/health`.
 
 ## Photo-based layouts (2-layer model)
 
-Photo-based rooms are defined by a layout config (today seeded in
-`features/rooms/data/layouts.js`; from Phase 2 served by the backend). The
-canonical schema lives in `shared/schemas/layout.js`:
+Photo-based rooms are defined by a layout config served by the backend
+(`/api/layouts/:roomId`, persisted to local disk storage; static seed in
+`features/rooms/data/layouts.js`). The canonical schema lives in
+`shared/schemas/layout.js`:
 
 - **background** — room photo with furniture/objects removed (inpainted clean);
   bare floor/wall/counter visible only.
@@ -63,8 +69,9 @@ Composite order in `canvas-compositor.js`:
 
 ```
 background.png
-  → per zone: homography-warp tile → clip to mask (feathered alpha) → multiply
-    background luminosity back over the tile for real shadows/reflections
+  → per plane: warp tile (quad corners) or flat repeat → clip to feathered
+    polygon mask → multiply background luminosity back over the tile for real
+    shadows/reflections
   → foreground.png (on top, unconditionally)
 ```
 
@@ -100,7 +107,8 @@ Login (useAuth) ──► App.jsx ──► Dashboard
                                   │     └─ PhotoViewer (bg + CSS tile + fg)
                                   ├─ Visualizer      (photo-based layouts)
                                   │     └─ RoomCanvas → canvas-compositor
-                                  │        (background → zones → foreground)
+                                  │        (background → planes → foreground)
+                                  │     └─ useLayout → fetchLayout(/api/layouts/:roomId)
                                   ├─ TileSwapPanel   (surfaces from room/layout)
                                   ├─ TileCatalogue   (catalogue/data)
                                   │     ├─ TileCard

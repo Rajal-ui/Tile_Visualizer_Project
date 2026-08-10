@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getTile } from "@/features/catalogue/data/tiles.js";
 import { getRoom, rooms } from "@/features/rooms/data/rooms.jsx";
-import { getLayout } from "@/features/rooms/data/layouts.js";
+import { useLayout } from "@/features/rooms/hooks/useLayout.js";
 
 const WorkspaceContext = createContext(null);
 
@@ -32,17 +32,16 @@ export function WorkspaceProvider({ children }) {
     return rooms.find((x) => x.id === prefs.roomId) || rooms[0];
   }, [prefs.roomId]);
 
+  const layout = useLayout(room?.layout || null);
+
   // Photo-based rooms expose their zone labels (Floor/Wall/Counter...) as the
   // tileable surfaces; CSS rooms keep the default set.
   const surfaces = useMemo(() => {
-    if (room?.layout) {
-      const layout = getLayout(room.layout);
-      if (layout?.zones?.length) {
-        return layout.zones.map((z) => z.label);
-      }
+    if (layout?.zones?.length) {
+      return layout.zones.map((z) => z.label);
     }
     return ["Floor", "Wall", "Accent Wall"];
-  }, [room?.layout]);
+  }, [layout]);
 
   const setRoom = (roomId) => {
     setPrefs((p) => ({ ...p, roomId, surface: "Floor" }));

@@ -1,4 +1,5 @@
 import { warpTextureToQuad } from "./homography.js";
+import { rasterizePolygonMask } from "./polygon.js";
 import { textureUrl } from "@/lib/textures.js";
 
 function loadImage(src) {
@@ -37,42 +38,6 @@ function resolveMaterialSrc(zone, appliedTiles) {
 }
 
 /**
- * Convert a mask image to an alpha mask with 2px Gaussian blur feathering.
- * Bright pixels = zone area. Black pixels = excluded.
- */
-function maskToAlpha(maskImg, w, h) {
-  const cvs = document.createElement("canvas");
-  cvs.width = w;
-  cvs.height = h;
-  const ctx = cvs.getContext("2d");
-
-  ctx.drawImage(maskImg, 0, 0, w, h);
-
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const d = imgData.data;
-
-  // Convert luminance to alpha channel
-  for (let i = 0; i < d.length; i += 4) {
-    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    d[i + 3] = lum > 128 ? 255 : 0;
-    d[i] = 255;
-    d[i + 1] = 255;
-    d[i + 2] = 255;
-  }
-  ctx.putImageData(imgData, 0, 0);
-
-  // Apply a 2px Gaussian blur to feather the mask edges
-  const blurCvs = document.createElement("canvas");
-  blurCvs.width = w;
-  blurCvs.height = h;
-  const bCtx = blurCvs.getContext("2d");
-  bCtx.filter = "blur(2px)";
-  bCtx.drawImage(cvs, 0, 0);
-
-  return blurCvs;
-}
-
-/**
  * Extract a grayscale shading layer from the background photo so the tile
  * picks up the room's real lighting through a multiply blend.
  */
@@ -97,34 +62,51 @@ function buildShadingLayer(baseImg, w, h) {
 }
 
 /**
- * Render one zone's tile (flat or perspective-warped), clip it to the zone mask,
- * draw it, then multiply the room's shading over it so lighting matches the photo.
+ * Render a repeating tile into a plane's canvas — perspective-warped when the
+ * plane has a 4-corner quad (corners, or a 4-point polygon acting as corners),
+ * flat repeat otherwise.
  */
-function applyZoneTile(ctx, zone, { baseImg, maskImg, materialImg, W, H }) {
-  const opacity = zone.opacity ?? 1;
-  const lightMultiply = zone.lightMultiply ?? 0.55;
-  const materialScale = zone.materialScale ?? 1;
+function renderPlaneTiles(tCtx, plane, materialImg, W, H) {
+  const corners =
+    plane.corners && plane.corners.length === 4
+      ? plane.corners
+      : plane.polygon && plane.polygon.length === 4
+        ? plane.polygon
+        : null;
 
-  // Render tile pattern (perspective warp or flat repeat fallback)
+  if (corners) {
+    warpTextureToQuad(materialImg, corners, tCtx.canvas);
+    return;
+  }
+
+  const materialScale = plane.materialScale ?? 1;
+  const tw = materialImg.naturalWidth * materialScale;
+  const th = materialImg.naturalHeight * materialScale;
+  for (let y = 0; y < H; y += th) {
+    for (let x = 0; x < W; x += tw) {
+      tCtx.drawImage(materialImg, x, y, tw, th);
+    }
+  }
+}
+
+/**
+ * Render one plane's tile, clip it to the plane's feathered polygon mask, draw
+ * it, then multiply the room's shading over it so lighting matches the photo.
+ */
+function applyPlane(ctx, plane, { baseImg, materialImg, W, H }) {
+  const opacity = plane.opacity ?? 1;
+  const lightMultiply = plane.lightMultiply ?? 0.55;
+  const feather = plane.feather ?? 2;
+
   const tileCvs = document.createElement("canvas");
   tileCvs.width = W;
   tileCvs.height = H;
   const tCtx = tileCvs.getContext("2d");
 
-  if (zone.corners && zone.corners.length === 4) {
-    warpTextureToQuad(materialImg, zone.corners, tileCvs);
-  } else {
-    const tw = materialImg.naturalWidth * materialScale;
-    const th = materialImg.naturalHeight * materialScale;
-    for (let y = 0; y < H; y += th) {
-      for (let x = 0; x < W; x += tw) {
-        tCtx.drawImage(materialImg, x, y, tw, th);
-      }
-    }
-  }
+  renderPlaneTiles(tCtx, plane, materialImg, W, H);
 
-  // Clip the tile canvas to the zone mask
-  const alphaMask = maskToAlpha(maskImg, W, H);
+  // Clip the tile canvas to the plane's feathered polygon mask
+  const alphaMask = rasterizePolygonMask(plane.polygon, W, H, feather);
   tCtx.globalCompositeOperation = "destination-in";
   tCtx.drawImage(alphaMask, 0, 0);
 
@@ -154,16 +136,17 @@ function applyZoneTile(ctx, zone, { baseImg, maskImg, materialImg, W, H }) {
  *
  * @param {string}       background    background.png (inpainted, furniture removed)
  * @param {string}       foreground    foreground.png (furniture/objects, drawn last)
- * @param {Array<Object>} zones        [{ id, label, maskSrc, corners }]
+ * @param {Array<Object>} zones        [{ id, label, planes: [{ polygon, corners }] }]
  * @param {Object}       appliedTiles  { [zoneLabel]: tile } — resolved per zone at render
  * @param {HTMLCanvasElement} canvas   target canvas
  *
  * Draw order:
  *   1. background — bare room photo (furniture/objects removed)
- *   2. warped + masked tile per zone — floor/wall/counter boundaries
+ *   2. warped + polygon-masked tile per plane — floor/wall/counter boundaries
  *   3. foreground — furniture/objects drawn on top, unconditionally
  *
- * Masks are boundary-only (no furniture holes); foreground.png owns occlusion.
+ * Masks are rasterized from each plane's polygon at render time (source of
+ * truth); foreground.png owns occlusion.
  */
 export async function compositeAllZones({ background, foreground, zones, appliedTiles, canvas }) {
   const baseImg = await loadImageOptional(background, "background");
@@ -182,23 +165,23 @@ export async function compositeAllZones({ background, foreground, zones, applied
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(baseImg, 0, 0, W, H);
 
-  // Layer 2: warped + masked tile per zone
+  // Layer 2: warped + masked tile per plane
   for (const zone of zones) {
     const materialSrc = resolveMaterialSrc(zone, appliedTiles);
-    if (!zone.maskSrc || !materialSrc) continue;
+    const planes = (zone.planes || []).filter((p) => (p.polygon || []).length >= 3);
+    if (!materialSrc || planes.length === 0) continue;
 
-    let maskImg, materialImg;
+    let materialImg;
     try {
-      [maskImg, materialImg] = await Promise.all([
-        loadImage(zone.maskSrc),
-        loadImage(materialSrc),
-      ]);
+      materialImg = await loadImage(materialSrc);
     } catch (e) {
-      console.warn("Failed to load assets for zone, skipping:", zone.label, e);
+      console.warn("Failed to load material, skipping zone:", zone.label, e);
       continue;
     }
 
-    applyZoneTile(ctx, zone, { baseImg, maskImg, materialImg, W, H });
+    for (const plane of planes) {
+      applyPlane(ctx, plane, { baseImg, materialImg, W, H });
+    }
   }
 
   // Layer 3: furniture/objects on top, unconditionally

@@ -12,16 +12,7 @@ export default function RoomCanvas({ layout, appliedTiles, activeZone, onZoneCha
   const [rendering, setRendering] = useState(false);
   const [compositeFailed, setCompositeFailed] = useState(false);
 
-  const zones = useMemo(
-    () =>
-      (layout?.zones || []).map((zone) => ({
-        ...zone,
-        opacity: zone.opacity ?? 1,
-        lightMultiply: zone.lightMultiply ?? 0.55,
-        materialScale: zone.materialScale ?? 1,
-      })),
-    [layout]
-  );
+  const zones = useMemo(() => layout?.zones || [], [layout]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
-import { getLayout } from "@/features/rooms/data/layouts.js";
+import { useLayout } from "@/features/rooms/hooks/useLayout.js";
 import RoomCanvas from "@/features/visualizer/pages/RoomCanvas.jsx";
 
 /**
@@ -129,7 +129,7 @@ function PhotoViewer({ room, floorTile }) {
 
 export default function Visualizer({ present = false }) {
   const { room, appliedTiles, surface, setSurface } = useWorkspace();
-  const layout = room.layout ? getLayout(room.layout) : null;
+  const layout = useLayout(room.layout || null);
   const floorTile = appliedTiles["Floor"] || null;
   const activeTile = appliedTiles[surface] || null;
 

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
+import { getLayout } from "@/features/rooms/data/layouts.js";
+import RoomCanvas from "@/features/visualizer/pages/RoomCanvas.jsx";
 
 /**
  * RoomViewer — 3-layer CSS perspective tile visualizer.
@@ -126,8 +128,10 @@ function PhotoViewer({ room, floorTile }) {
 
 
 export default function Visualizer({ present = false }) {
-  const { room, appliedTiles } = useWorkspace();
+  const { room, appliedTiles, surface, setSurface } = useWorkspace();
+  const layout = room.layout ? getLayout(room.layout) : null;
   const floorTile = appliedTiles["Floor"] || null;
+  const activeTile = appliedTiles[surface] || null;
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -138,7 +142,13 @@ export default function Visualizer({ present = false }) {
           <p className="text-xs text-slate-400">{room.tagline}</p>
         </div>
         <div className="flex items-center gap-2">
-          {floorTile && (
+          {layout && activeTile && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {surface}: {activeTile.name}
+            </span>
+          )}
+          {!layout && floorTile && (
             <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Floor: {floorTile.name}
@@ -149,18 +159,27 @@ export default function Visualizer({ present = false }) {
 
       {/* Room viewer */}
       <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-100">
-        <PhotoViewer room={room} floorTile={floorTile} />
+        {layout ? (
+          <RoomCanvas
+            layout={layout}
+            appliedTiles={appliedTiles}
+            activeZone={surface}
+            onZoneChange={setSurface}
+          />
+        ) : (
+          <PhotoViewer room={room} floorTile={floorTile} />
+        )}
       </div>
 
       {/* Footer */}
       <div className="flex items-center gap-2 border-t border-slate-100 bg-white px-4 py-2.5 text-xs text-slate-500">
         <span
           className="inline-block h-3 w-3 rounded ring-1 ring-black/10"
-          style={{ backgroundColor: floorTile ? floorTile.colors[0] : "#cbd5e1" }}
+          style={{ backgroundColor: activeTile ? activeTile.colors[0] : "#cbd5e1" }}
         />
-        <span className="font-semibold text-slate-700">Floor</span>
+        <span className="font-semibold text-slate-700">{layout ? surface : "Floor"}</span>
         <span className="text-slate-300">·</span>
-        <span>{floorTile ? floorTile.name : "No tile applied — select one from the panel →"}</span>
+        <span>{activeTile ? activeTile.name : "No tile applied — select one from the panel →"}</span>
       </div>
     </div>
   );

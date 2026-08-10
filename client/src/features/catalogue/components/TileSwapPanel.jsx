@@ -5,19 +5,13 @@ import { useWorkspace } from "@/store/workspace.context.jsx";
 import { textureUrl } from "@/lib/textures.js";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
-const DEFAULT_TABS = [
-  { key: "Floor", label: "FLOOR" },
-  { key: "Wall", label: "WALL" },
-  { key: "Accent Wall", label: "ACCENT" },
-];
-
 export default function TileSwapPanel({ onOpenCatalogue }) {
-  const { room, surface, setSurface, activeTile, applyTile, removeTile } = useWorkspace();
+  const { room, surfaces, surface, setSurface, activeTile, applyTile, removeTile } = useWorkspace();
   const [detail, setDetail] = useState(null);
 
   const roomTiles = useMemo(() => tilesForRoom(room.id), [room.id]);
 
-  const surfaceTabs = DEFAULT_TABS;
+  const surfaceTabs = surfaces.map((s) => ({ key: s, label: s.toUpperCase() }));
 
 
   return (

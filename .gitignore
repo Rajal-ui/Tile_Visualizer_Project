@@ -16,6 +16,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Runtime layout storage (config.json + uploaded assets)
+server/storage/
+
 # OS files
 .DS_Store
 Thumbs.db

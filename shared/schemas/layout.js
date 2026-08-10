@@ -69,14 +69,6 @@ export function createPlane({ polygon, corners = null }) {
 }
 
 /**
- * Convenience factory: a simple quad plane whose polygon and perspective corners
- * are the same four points.
- */
-export function planeFromQuad(corners) {
-  return createPlane({ polygon: corners, corners });
-}
-
-/**
  * Create a zone definition.
  *
  * @param {Object}   opts
@@ -132,9 +124,12 @@ export function validateLayout(room) {
   if (room.background != null && typeof room.background !== "string") errors.push("room.background must be a string URL or null");
   if (room.foreground != null && typeof room.foreground !== "string") errors.push("room.foreground must be a string URL or null");
 
-  if (!Array.isArray(room.zones) || room.zones.length === 0) {
-    errors.push("room.zones must be a non-empty array");
+  if (!Array.isArray(room.zones)) {
+    errors.push("room.zones must be an array");
   } else {
+    if (room.status === STATUS_PUBLISHED && room.zones.length === 0) {
+      errors.push("room.zones must be non-empty when status is 'published'");
+    }
     room.zones.forEach((zone, zi) => {
       const at = `zones[${zi}]`;
       if (!zone || typeof zone !== "object") return errors.push(`${at} must be an object`);
@@ -165,21 +160,4 @@ export function validateLayout(room) {
   }
 
   return { ok: errors.length === 0, errors };
-}
-
-/**
- * Migrate a legacy single-quad zone entry to the new planes[] shape.
- *
- * OLD: { id, label, maskSrc, corners }
- * NEW: { id, label, planes: [{ polygon, corners }] }
- *
- * A legacy zone with no corners cannot be auto-migrated (the old mask PNG would
- * need rasterizing back to points) — it returns an empty planes[] and must be
- * re-created in the polygon editor.
- */
-export function migrateLegacyZone({ id, label, corners }) {
-  if (Array.isArray(corners) && corners.length === 4 && corners.every(isPoint)) {
-    return createZone({ id, label, planes: [planeFromQuad(corners)] });
-  }
-  return createZone({ id, label, planes: [] });
 }

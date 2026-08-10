@@ -14,7 +14,7 @@
     "build": "npm run build --workspace client",
     "preview": "npm run preview --workspace client",
     "start": "npm run start --workspace server",
-    "test": "echo \"No automated tests configured yet. See tests/ and server/tests/.\" && exit 0"
+    "test": "npm run test --workspace server"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

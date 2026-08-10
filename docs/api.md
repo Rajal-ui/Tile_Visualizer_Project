@@ -45,7 +45,25 @@ the backend integration phase — none are implemented yet.
 | PATCH  | `/api/tiles/:id` | Update tile (admin)         |
 | DELETE | `/api/tiles/:id` | Remove tile (admin)         |
 
-### Layout / stencil management
+### Photo layout persistence (2-layer model)
+
+Implemented in Phase 2. A full room config (all zones together) is saved/fetched
+as one document. Body shape matches the canonical schema in
+`shared/schemas/layout.js`.
+
+| Method | Path                    | Purpose                                        |
+| ------ | ----------------------- | ---------------------------------------------- |
+| GET    | `/api/layouts`          | List photo layouts (draft + published)         |
+| GET    | `/api/layouts/:roomId`  | Fetch full room config (background/foreground/zones/status) |
+| POST   | `/api/layouts/:roomId`  | Save full room config (all zones in one request, `status: draft | published`) |
+| GET    | `/api/layouts/:roomId/assets/...` | Serve stored background/foreground + generated mask PNGs |
+
+Assets (background.png, foreground.png, generated mask PNGs) are stored in
+server/cloud storage at save time — never downloaded to the desktop. The
+compositor rasterizes zone masks from `planes[].polygon` at render time; mask
+PNGs are derived artifacts only.
+
+### Layout / stencil management (general, later)
 
 | Method | Path               | Purpose                      |
 | ------ | ------------------ | ---------------------------- |
@@ -76,3 +94,10 @@ the backend integration phase — none are implemented yet.
 - `GET/POST /api/customers`, `GET/PATCH/DELETE /api/customers/:id`
 
 Routers for these will be mounted in `server/src/app.js` behind TODO markers.
+
+## Archived admin endpoints (removed)
+
+The old `/api/admin` router (`POST /api/admin/segment`, `POST /api/admin/save-layout`,
+`GET /api/admin/layouts`) belonged to the deprecated single-photo-plus-mask
+pipeline and was removed with the `legacy/` archive. The 2-layer layout
+persistence backend (`/api/layouts/*`, see "Layouts" above) is its replacement.

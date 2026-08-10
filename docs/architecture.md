@@ -17,11 +17,59 @@ exposes `/health`.
   > phase. They must move to the backend (admin authentication) before production.
 - **Workspace state**: `store/workspace.context.jsx` provides `useWorkspace()`
   with the selected room, active surface, applied tiles, and catalogue dark mode,
-  persisted to `localStorage` (`tv_prefs`).
-- **Rendering**: the visualizer renders a room's isometric SVG scene and applies
-  SVG tile patterns generated on the fly by `features/visualizer/lib/patterns.js`.
+  persisted to `localStorage` (`tv_prefs`). Photo-based rooms derive their tileable
+  surfaces from the layout's zone labels (Floor/Wall/Counter...).
+- **Rendering** — two paths:
+  1. **CSS photo rooms** (`features/visualizer/pages/Visualizer.jsx` →
+     `PhotoViewer`): 3-layer CSS perspective — `bg.jpg`, a CSS-3D-transformed tile
+     layer, then `fg.png` on top. Used by the existing SVG-scene rooms (Living
+     Room, Bedroom, etc.), untouched by the 2-layer rebuild.
+  2. **2-layer canvas layouts** (`features/visualizer/pages/RoomCanvas.jsx` →
+     `features/visualizer/lib/canvas-compositor.js`): homography-warped tile per
+     zone composited on canvas. Used by photo-based layouts (see below).
   Tile textures are procedurally generated SVG data-URIs (`lib/textures.js`) —
   no static image assets are required today.
+
+## Photo-based layouts (2-layer model)
+
+Photo-based rooms are defined by a layout config (today seeded in
+`features/rooms/data/layouts.js`; from Phase 2 served by the backend). The
+canonical schema lives in `shared/schemas/layout.js`:
+
+- **background** — room photo with furniture/objects removed (inpainted clean);
+  bare floor/wall/counter visible only.
+- **foreground** — same canvas size, transparent except furniture/objects;
+  always drawn on top, unconditionally.
+- **zones** — `[{ id, label, planes }]`, where `planes` is an array of
+  `{ polygon, corners }`:
+  - `polygon` — zone boundary points `[[x,y] xN]` (N >= 3); the compositor
+    rasterizes this into a feathered alpha mask at render time (no `maskSrc`
+    PNGs in config).
+  - `corners` — 4-point perspective quad `[[x,y] x4]` for the homography warp.
+    For a simple quad it equals `polygon`; multi-plane zones (bent walls) hold
+    one plane per flat segment.
+- **status** — `"draft" | "published"`. Only published layouts appear in the
+  rep-facing room selector.
+
+Composite order in `canvas-compositor.js`:
+
+```
+background.png
+  → per zone: homography-warp tile → clip to mask (feathered alpha) → multiply
+    background luminosity back over the tile for real shadows/reflections
+  → foreground.png (on top, unconditionally)
+```
+
+There is **no live segmentation / furniture-exclusion logic** — `foreground.png`
+owns occlusion. Tiles are resolved at render time from `useWorkspace().appliedTiles`
+keyed by zone label, so swapping a tile per zone is instant.
+
+## Removed legacy code
+
+Deprecated mask-generation/compositor wiring (old SAM/manual mask pipeline, the
+old single-photo-plus-mask model, furniture-hole mask assets) was removed in the
+cleanup; the `legacy/` archive was deleted. The 2-layer compositor and the
+layout persistence backend are the only compositing/masking paths.
 
 ### Server (`server/`)
 
@@ -40,8 +88,12 @@ utilities that both `client` and `server` can import via the `@shared/*` alias.
 ```
 Login (useAuth) ──► App.jsx ──► Dashboard
                                   ├─ RoomSelector    (rooms/data)
-                                  ├─ LayoutSelector  (layouts/data)
-                                  ├─ Visualizer      (room.scene + patterns)
+                                  ├─ Visualizer      (CSS photo rooms)
+                                  │     └─ PhotoViewer (bg + CSS tile + fg)
+                                  ├─ Visualizer      (photo-based layouts)
+                                  │     └─ RoomCanvas → canvas-compositor
+                                  │        (background → zones → foreground)
+                                  ├─ TileSwapPanel   (surfaces from room/layout)
                                   └─ TileCatalogue   (catalogue/data)
                                         ├─ TileCard
                                         └─ TileModal

@@ -1,29 +1,38 @@
 const api = (path, { method = "GET", body, json = true } = {}) => {
   const opts = { method, headers: {} };
-  if (json && body != null) {
+  if (body != null) {
     if (body instanceof FormData) {
       opts.body = body;
-    } else {
+    } else if (json) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
     }
   }
-  return fetch(path, opts).then(async (r) => {
-    const text = await r.text();
-    let parsed;
-    try {
-      parsed = text ? JSON.parse(text) : null;
-    } catch {
-      parsed = null;
-    }
-    if (!r.ok) {
-      const err = new Error(parsed?.error || r.statusText);
-      err.status = r.status;
-      err.detail = parsed;
+  return fetch(path, opts)
+    .catch((e) => {
+      const err = new Error(
+        `Cannot reach the API server at ${path}. Is \`npm run dev:server\` running?`
+      );
+      err.network = true;
+      err.cause = e;
       throw err;
-    }
-    return parsed;
-  });
+    })
+    .then(async (r) => {
+      const text = await r.text();
+      let parsed;
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch {
+        parsed = null;
+      }
+      if (!r.ok) {
+        const err = new Error(parsed?.error || r.statusText);
+        err.status = r.status;
+        err.detail = parsed;
+        throw err;
+      }
+      return parsed;
+    });
 };
 
 /** List all photo layouts (draft + published). */

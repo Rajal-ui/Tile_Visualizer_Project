@@ -29,6 +29,14 @@ exposes `/health`.
      zone composited on canvas. Used by photo-based layouts (see below).
   Tile textures are procedurally generated SVG data-URIs (`lib/textures.js`) —
   no static image assets are required today.
+- **Layout editor** (`features/layouts/pages/LayoutEditor.jsx`): admin tool that
+  defines photo-layout geometry — click-to-place N-point polygons per plane,
+  multiple planes per zone, and an optional 4-corner perspective quad per plane.
+  It loads the layout config from the backend API (falling back to the static
+  seed), and **Save Draft / Publish** POST the canonical shape (see
+  `shared/schemas/layout.js`) back through `/api/layouts/:roomId` via
+  `services/layouts.api.js`. Geometry helpers live in
+  `features/layouts/lib/geometry.js`.
 
 ## Photo-based layouts (2-layer model)
 
@@ -94,9 +102,11 @@ Login (useAuth) ──► App.jsx ──► Dashboard
                                   │     └─ RoomCanvas → canvas-compositor
                                   │        (background → zones → foreground)
                                   ├─ TileSwapPanel   (surfaces from room/layout)
-                                  └─ TileCatalogue   (catalogue/data)
-                                        ├─ TileCard
-                                        └─ TileModal
+                                  ├─ TileCatalogue   (catalogue/data)
+                                  │     ├─ TileCard
+                                  │     └─ TileModal
+                                  └─ LayoutEditor    (admin zone/plane editor)
+                                        └─ /api/layouts/:roomId (fetch + save)
                           all read/write workspace.context (store)
 ```
 

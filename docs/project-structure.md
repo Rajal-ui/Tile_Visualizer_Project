@@ -3,7 +3,7 @@
 ## Conventions
 
 - **Feature-based organization** in `client/src/features/<domain>/`. Business
-  domains: `auth`, `dashboard`, `catalogue`, `visualizer`, `rooms`, `layouts`.
+  domains: `auth`, `dashboard`, `catalogue`, `visualizer`, `rooms`.
 - Each feature owns its `components/`, `pages/`, `data/`, `hooks/`, `services/`,
   and feature-specific logic. Only genuinely reusable code lives in shared folders.
 - `client/src/components/` is reserved for reusable, cross-feature presentational
@@ -26,7 +26,7 @@ tile-visualizer/
 │   ├── public/
 │   │   ├── assets/
 │   │   │   ├── images/
-│   │   │   ├── room-layouts/
+│   │   │   ├── rooms/
 │   │   │   └── tile-textures/
 │   │   └── favicon.svg
 │   ├── src/
@@ -36,9 +36,9 @@ tile-visualizer/
 │   │   │   ├── auth/           # Login page, useAuth context, credentials
 │   │   │   ├── dashboard/      # Dashboard page
 │   │   │   ├── catalogue/      # Tile list, card, modal, tile data
-│   │   │   ├── visualizer/     # SVG visualizer, pattern generators
+│   │   │   ├── visualizer/     # 3-layer CSS room viewer, room photos
 │   │   │   ├── rooms/          # Room selector, room data/scenes
-│   │   │   └── layouts/        # Surface selector, surface definitions
+│   │   │   └── surfaces/       # Surface selector, surface definitions
 │   │   ├── hooks/              # Reusable React hooks (empty scaffold)
 │   │   ├── lib/                # Client utilities (texture generator)
 │   │   ├── services/           # API / external service calls (empty scaffold)

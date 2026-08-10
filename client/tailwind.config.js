@@ -29,6 +29,7 @@ export default {
         "fade-in-up": "fadeInUp 0.4s ease-out both",
         "scale-in": "scaleIn 0.25s ease-out both",
         "modal-in": "modalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both",
+        shimmer: "shimmer 1.6s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: {
@@ -46,6 +47,10 @@ export default {
         modalIn: {
           from: { opacity: "0", transform: "translateY(16px) scale(0.97)" },
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
         },
       },
       boxShadow: {

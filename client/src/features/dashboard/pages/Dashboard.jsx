@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { LogOut, MonitorPlay, X, RotateCcw } from "lucide-react";
+import { LogOut, MonitorPlay, X, RotateCcw, MapPin } from "lucide-react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
 import { useWorkspace } from "@/store/workspace.context.jsx";
-import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
-import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
+import RoomViewer from "@/features/visualizer/components/RoomViewer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const { resetAll } = useWorkspace();
+  const { rooms, roomId, setRoom, resetAll } = useWorkspace();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
 
@@ -77,26 +76,54 @@ export default function Dashboard() {
 
       <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 px-4 py-2">
         {!present && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <RoomSelector />
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 lg:flex">
+              <MapPin size={14} />
+              Rooms
+            </div>
+            <div className="tile-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">
+              {rooms.map((room) => {
+                const Icon = room.icon;
+                const active = room.id === roomId;
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => setRoom(room.id)}
+                    aria-pressed={active}
+                    className={`group flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition ${
+                      active
+                        ? "border-transparent text-white shadow-card"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                    style={active ? { backgroundColor: room.accent } : undefined}
+                  >
+                    <Icon
+                      size={15}
+                      className={active ? "text-white" : "text-slate-400 group-hover:text-slate-600"}
+                    />
+                    {room.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         <div
-          className={`grid flex-1 gap-4 ${
+          className={`grid flex-1 gap-3 lg:gap-4 ${
             present
-              ? "grid-cols-1"
-              : "grid-cols-1 lg:grid-cols-[1fr_300px]"
+              ? "grid-cols-1 grid-rows-1"
+              : "grid-cols-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[1fr_300px] lg:grid-rows-1"
           }`}
         >
           <div className={`flex flex-col ${present ? "min-h-[calc(100vh-140px)]" : "min-h-0 flex-1"}`}>
             <div className="min-h-0 flex-1">
-              <Visualizer present={present} />
+              <RoomViewer present={present} />
             </div>
           </div>
 
           {!present && (
-            <div className="min-h-0 lg:max-h-[calc(100vh-120px)]">
+            <div className="min-h-0 h-[45vh] lg:h-auto lg:max-h-[calc(100vh-120px)]">
               <TileSwapPanel onOpenCatalogue={() => setShowCatalogue(true)} />
             </div>
           )}

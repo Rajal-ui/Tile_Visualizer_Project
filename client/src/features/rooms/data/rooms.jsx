@@ -61,7 +61,7 @@ export const rooms = [
     tagline: "Functional & fresh workspaces",
     icon: CookingPot,
     accent: "#f59e0b",
-    bg: encodeURI("/assets/room-layouts/IRIDIUM/Kitchen island, wall & Floor.png"),
+    bg: "/assets/rooms/kitchen/bg.jpg",
     fg: "/assets/rooms/kitchen/fg.png",
     floor: {
       perspective: 900,

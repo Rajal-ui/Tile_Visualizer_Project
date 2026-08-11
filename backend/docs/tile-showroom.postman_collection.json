@@ -1,0 +1,1421 @@
+{
+  "info": {
+    "_postman_id": "9b8ca231-a507-4cb6-8876-9af3881df595",
+    "name": "Tile Showroom Backend API",
+    "description": "Full API for the Tile Showroom Visualization System \u2014 single admin login, 5 rooms x 5 layouts, tile catalogue with Elasticsearch search + Redis caching, room/layout/tile foreign-key based visualization flow, and PDF export.\n\nRun requests top-to-bottom within a folder to auto-capture ids (token, roomId, layoutId, tileId, visualizationId, adminId) into collection variables via each request's Tests script \u2014 later requests reference them automatically.\n\nBefore testing: run `npm run seed` on the backend to populate 5 rooms, 5 layouts each, and 1200 tiles, and set `baseUrl` below if not running on localhost:5000.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "layoutId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "visualizationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Live connectivity status of MongoDB, Redis, and Elasticsearch."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Admin (first-time setup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Only needed once, for first-time setup. If you already ran `npm run seed`, use Login instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Super Admin\",\n  \"email\": \"admin@tileshowroom.com\",\n  \"password\": \"Admin@123\",\n  \"role\": \"superadmin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success) { pm.collectionVariables.set('token', res.data.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Rate-limited to 10 attempts / 15 min per IP+email via Redis.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tileshowroom.com\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success) { pm.collectionVariables.set('token', res.data.token); }",
+                  "pm.test('Login succeeded', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Blacklists the current token in Redis. Re-running any authed request after this should return 401."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "List Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms"
+              ]
+            },
+            "description": "Public. Cached in Redis (1hr TTL). Expect 5 rooms after seeding: Living Room, Kitchen, Bedroom, Balcony, Bathroom."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const kitchen = (res.data || []).find(r => r.slug === 'kitchen');",
+                  "if (kitchen) pm.collectionVariables.set('roomId', kitchen._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Room by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/kitchen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "kitchen"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Room by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "{{roomId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Layouts for Room",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}/layouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "{{roomId}}",
+                "layouts"
+              ]
+            },
+            "description": "Public. Cached. Expect 5 layouts per room after seeding."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.length > 0) pm.collectionVariables.set('layoutId', res.data[0]._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Room (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Study Room",
+                  "type": "text"
+                },
+                {
+                  "key": "slug",
+                  "value": "study-room",
+                  "type": "text"
+                },
+                {
+                  "key": "order",
+                  "value": "6",
+                  "type": "text"
+                },
+                {
+                  "key": "previewImage",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "icon",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Layout for Room (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}/layouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "{{roomId}}",
+                "layouts"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Custom Layout",
+                  "type": "text"
+                },
+                {
+                  "key": "availableSurfaces",
+                  "value": "[\"ceiling\",\"wall\",\"floor\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "previewImage",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "ceilingMask",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "wallMask",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "floorMask",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Room (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "{{roomId}}"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Kitchen",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "previewImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Room (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms",
+                "{{roomId}}"
+              ]
+            },
+            "description": "Careful \u2014 deletes the room. Use a test room id, not a seeded one, unless you intend to re-seed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Layouts",
+      "item": [
+        {
+          "name": "Get Layout by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/layouts/{{layoutId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "layouts",
+                "{{layoutId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Layout (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/layouts/{{layoutId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "layouts",
+                "{{layoutId}}"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Kitchen - Layout 1 (Updated)",
+                  "type": "text"
+                },
+                {
+                  "key": "availableSurfaces",
+                  "value": "[\"wall\",\"floor\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "previewImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Layout (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/layouts/{{layoutId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "layouts",
+                "{{layoutId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tiles",
+      "item": [
+        {
+          "name": "Search / Browse Tiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiles?search=marble&category=&material=&finish=&size=&application=floor&page=1&limit=20&sort=-createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "marble"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "material",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "finish",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "application",
+                  "value": "floor",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "With `search` set, this hits Elasticsearch (source: 'elasticsearch'). Remove `search` to browse via cached MongoDB (source: 'cache' on repeat calls)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.length > 0) pm.collectionVariables.set('tileId', res.data[0]._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Filter Options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/filters/options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "filters",
+                "options"
+              ]
+            },
+            "description": "Distinct categories/materials/finishes/sizes for building filter UI. Cached 1hr."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tiles by Surface",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/surface/floor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "surface",
+                "floor"
+              ]
+            },
+            "description": "Swap 'floor' in the URL for 'wall' or 'ceiling' as needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Bulk Import Template (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/bulk-import/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "bulk-import",
+                "template"
+              ]
+            },
+            "description": "Use Postman's 'Send and Download' to save the CSV template."
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Import Tiles (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/bulk-import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "bulk-import"
+              ]
+            },
+            "description": "form-data key 'file', a .csv matching the downloaded template.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tile by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/{{tileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "{{tileId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Tile (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Test Tile",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "Ceramic",
+                  "type": "text"
+                },
+                {
+                  "key": "material",
+                  "value": "Porcelain",
+                  "type": "text"
+                },
+                {
+                  "key": "size",
+                  "value": "600x600mm",
+                  "type": "text"
+                },
+                {
+                  "key": "thickness",
+                  "value": "9mm",
+                  "type": "text"
+                },
+                {
+                  "key": "finish",
+                  "value": "Glossy",
+                  "type": "text"
+                },
+                {
+                  "key": "longevity",
+                  "value": "15+ years",
+                  "type": "text"
+                },
+                {
+                  "key": "tilesInBox",
+                  "value": "6",
+                  "type": "text"
+                },
+                {
+                  "key": "application",
+                  "value": "[\"wall\",\"floor\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "499",
+                  "type": "text"
+                },
+                {
+                  "key": "tileImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Tile (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/{{tileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "{{tileId}}"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "price",
+                  "value": "549",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "tileImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Tile (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tiles/{{tileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tiles",
+                "{{tileId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Visualizations",
+      "item": [
+        {
+          "name": "Create Visualization (Select Room + Layout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"layoutId\": \"{{layoutId}}\",\n  \"sessionId\": \"postman-test-session\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success) pm.collectionVariables.set('visualizationId', res.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Visualizations for Session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations?sessionId=postman-test-session&saved=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations"
+              ],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "postman-test-session"
+                },
+                {
+                  "key": "saved",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Visualization (Fully Populated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}"
+              ]
+            },
+            "description": "Returns room + layout + surfaces.ceiling/wall/floor.tile, all fully populated \u2014 this is what the frontend renders."
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Tile - Floor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}/surface",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}",
+                "surface"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surface\": \"floor\",\n  \"tileId\": \"{{tileId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Tile - Wall",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}/surface",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}",
+                "surface"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surface\": \"wall\",\n  \"tileId\": \"{{tileId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Tile - Ceiling",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}/surface",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}",
+                "surface"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surface\": \"ceiling\",\n  \"tileId\": \"{{tileId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Tile from Surface",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}/surface/wall",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}",
+                "surface",
+                "wall"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save Visualization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}/save",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}",
+                "save"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Visualization",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visualizations/{{visualizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visualizations",
+                "{{visualizationId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "PDF",
+      "item": [
+        {
+          "name": "Download Visualization PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pdf/visualization/{{visualizationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pdf",
+                "visualization",
+                "{{visualizationId}}"
+              ]
+            },
+            "description": "Use Postman's 'Send and Download' \u2014 this returns a binary PDF, not JSON."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Catalogue PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pdf/catalogue?category=Marble&material=&finish=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pdf",
+                "catalogue"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Marble",
+                  "disabled": true
+                },
+                {
+                  "key": "material",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "finish",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admins",
+      "item": [
+        {
+          "name": "List Admins (Superadmin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.length > 0) pm.collectionVariables.set('adminId', res.data[0]._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Admin by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admins",
+                "{{adminId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Admin (Superadmin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Second Admin\",\n  \"email\": \"admin2@tileshowroom.com\",\n  \"password\": \"Admin@456\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admins",
+                "{{adminId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Second Admin (Updated)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Admin (Superadmin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admins",
+                "{{adminId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

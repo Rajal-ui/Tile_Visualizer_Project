@@ -1,4 +1,5 @@
 # Tile Visualizer
+[![Build Status](https://github.com/Rajal-ui/Tile_Visualizer_Project/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajal-ui/Tile_Visualizer_Project/actions/workflows/ci.yml)
 
 Internal tile and granite visualizer for the sales team. Browse the tile catalogue,
 pick a room layout, and apply tiles to floors, walls, and accent walls in real time.

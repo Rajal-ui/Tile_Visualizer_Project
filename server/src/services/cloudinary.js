@@ -1,7 +1,19 @@
 import { v2 as cloudinary } from "cloudinary";
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } from "../config/env.js";
 
-// Configure Cloudinary
+// Configure Cloudinary at module load if credentials are already present.
+// The service also reconfigures lazily on first call so that test stubs set
+// on process.env before import are always picked up in any execution order.
+function ensureConfigured() {
+  const name   = process.env.CLOUDINARY_CLOUD_NAME;
+  const key    = process.env.CLOUDINARY_API_KEY;
+  const secret = process.env.CLOUDINARY_API_SECRET;
+  if (!name || !key || !secret) {
+    throw new Error("Cloudinary is not configured. Please set CLOUDINARY_* environment variables.");
+  }
+  cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret });
+}
+
 if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
   cloudinary.config({
     cloud_name: CLOUDINARY_CLOUD_NAME,
@@ -19,9 +31,7 @@ export const cloudinaryService = {
    * @returns {Promise<{url: string, thumbnailUrl: string, publicId: string}>}
    */
   uploadTileImage: async function(buffer, originalFilename) {
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      throw new Error("Cloudinary is not configured. Please set CLOUDINARY_* environment variables.");
-    }
+    ensureConfigured();
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -54,7 +64,8 @@ export const cloudinaryService = {
    * @returns {Promise<any>}
    */
   deleteTileImage: async function(publicId) {
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET || !publicId) return;
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY ||
+        !process.env.CLOUDINARY_API_SECRET || !publicId) return;
     return cloudinary.uploader.destroy(publicId);
   }
 };

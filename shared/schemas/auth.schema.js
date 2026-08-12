@@ -5,7 +5,7 @@ export const ADMIN_ROLES = ["admin", "superadmin"];
 
 /** Admin document shape (shared contract for seeding + API DTOs). */
 export const AdminSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  username: z.string().trim().toLowerCase().min(3, "Username must be at least 3 characters"),
   name: z.string().min(1, "Name is required"),
   email: z.string().email("A valid email is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -14,7 +14,7 @@ export const AdminSchema = z.object({
 
 /** Login request body. */
 export const AdminLoginSchema = z.object({
-  username: z.string().min(3, "Username is required"),
+  username: z.string().trim().toLowerCase().min(3, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 

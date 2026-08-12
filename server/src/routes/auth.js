@@ -17,13 +17,13 @@ import {
 } from "../services/password-reset.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, JWT_SECRET } from "../middleware/requireAuth.js";
+import { requireRole } from "../middleware/requireRole.js";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_do_not_use_in_prod";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
-router.post("/register", async (req, res) => {
+router.post("/register", requireAuth, requireRole("superadmin"), async (req, res) => {
   const check = validate(AdminSchema, req.body);
   if (!check.ok) {
     return res.status(400).json({ error: check.errors.join("; ") });

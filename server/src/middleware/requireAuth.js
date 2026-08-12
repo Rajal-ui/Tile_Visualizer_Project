@@ -1,7 +1,10 @@
 import jwt from "jsonwebtoken";
 import { Admin } from "../models/admin.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_do_not_use_in_prod";
+export const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "test" ? "test_secret" : null);
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is missing");
+}
 
 export const requireAuth = async (req, res, next) => {
   try {

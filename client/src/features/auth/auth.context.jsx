@@ -45,9 +45,15 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (e) {} // Ignore network errors on logout
-    setUser(null);
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (res.ok) {
+        setUser(null);
+        return { ok: true };
+      }
+      return { ok: false, message: "Failed to log out." };
+    } catch (e) {
+      return { ok: false, message: "Network error on logout." };
+    }
   };
 
   const value = { user, login, logout, loading };

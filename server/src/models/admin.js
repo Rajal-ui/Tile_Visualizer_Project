@@ -35,3 +35,18 @@ adminSchema.set("toJSON", {
 
 export const Admin =
   mongoose.models.Admin || mongoose.model("Admin", adminSchema);
+
+// Idempotent migration for missing usernames. Runs once at startup before index building finishes.
+if (mongoose.connection.readyState !== 0) {
+  Admin.find({ username: { $exists: false } }).then(async (missing) => {
+    for (const admin of missing) {
+      const fallback = admin.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+      let proposed = fallback;
+      let i = 1;
+      while (await Admin.findOne({ username: proposed })) {
+        proposed = `${fallback}${i++}`;
+      }
+      await Admin.updateOne({ _id: admin._id }, { $set: { username: proposed } });
+    }
+  }).catch(err => console.error("Admin migration error:", err));
+}

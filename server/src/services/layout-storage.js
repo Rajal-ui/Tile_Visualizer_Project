@@ -4,6 +4,7 @@ import { createReadStream } from "node:fs";
 import sharp from "sharp";
 import { validateLayout } from "@tile-visualizer/shared/schemas/layout.js";
 import { Layout } from "../models/layout.js";
+import mongoose from "mongoose";
 
 const ROOM_ID_RE = /^[a-z0-9][a-z0-9-_]*$/i;
 const FILENAME_RE = /^[a-z0-9._-]+\.(png|jpg|jpeg|webp)$/i;
@@ -106,6 +107,7 @@ export class LayoutStorage {
   }
 
   async readConfig(roomId) {
+    await this._migrateLegacyLayouts();
     const config = await Layout.findOne({ id: roomId });
     if (!config) throw new Error(`Layout not found: ${roomId}`);
     return config.toJSON();
@@ -130,7 +132,32 @@ export class LayoutStorage {
     return updated.toJSON();
   }
 
+  async _migrateLegacyLayouts() {
+    if (this._migrated || mongoose.connection.readyState === 0) return;
+    this._migrated = true;
+    try {
+      const dirs = await fs.readdir(this.root, { withFileTypes: true });
+      for (const d of dirs) {
+        if (!d.isDirectory()) continue;
+        const confPath = path.join(this.root, d.name, "config.json");
+        try {
+          const exists = await Layout.findOne({ id: d.name });
+          if (exists) continue;
+          
+          const raw = await fs.readFile(confPath, "utf-8");
+          const config = JSON.parse(raw);
+          await Layout.create(config);
+        } catch (e) {
+          // ignore missing or malformed legacy files
+        }
+      }
+    } catch (e) {
+      // ignore root directory missing
+    }
+  }
+
   async listLayouts() {
+    await this._migrateLegacyLayouts();
     const layouts = await Layout.find({}).lean();
     return layouts.map(cfg => ({
       id: cfg.id,

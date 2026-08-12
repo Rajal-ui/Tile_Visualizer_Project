@@ -69,6 +69,14 @@ test.before(() => {
   });
   
   mock.method(Admin, "findById", (id) => {
+    if (id === "super-id") {
+      return Promise.resolve({
+        _id: "super-id",
+        role: "superadmin",
+        username: "superadmin",
+        toJSON() { return { username: "superadmin", role: "superadmin" }; }
+      });
+    }
     if (id === "fake-id") return Promise.resolve(store[0]);
     return Promise.resolve(null);
   });
@@ -178,12 +186,15 @@ test("forgot/reset request schemas validate bodies", () => {
 // ---------------------------------------------------------------------------
 
 test("POST /api/auth/register creates an admin and returns JWT", async () => {
+  const jwt = await import("jsonwebtoken");
+  const token = jwt.default.sign({ id: "super-id" }, process.env.JWT_SECRET || "test_secret", { expiresIn: "1h" });
+
   const res = await postJson(`${baseUrl}/api/auth/register`, {
     username: "newadmin",
     name: "New Admin",
     email: "new@example.com",
     password: "password123",
-  });
+  }, { Cookie: `jwt=${token}` });
   assert.equal(res.status, 201);
   assert.equal(res.json.user.username, "newadmin");
   const cookies = res.headers.get("set-cookie");

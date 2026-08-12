@@ -4,11 +4,11 @@ import path from "node:path";
 import { connectDb, disconnectDb } from "../config/db.js";
 import { Tile } from "../models/index.js";
 import { cloudinaryService } from "../services/cloudinary.js";
-import { CLOUDINARY_CLOUD_NAME } from "../config/env.js";
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } from "../config/env.js";
 
 async function run() {
-  if (!CLOUDINARY_CLOUD_NAME) {
-    console.error("❌ CLOUDINARY_CLOUD_NAME is not set. Cannot run migration.");
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error("❌ Cloudinary is not fully configured. Cannot run migration.");
     process.exit(1);
   }
 
@@ -31,7 +31,13 @@ async function run() {
     if (tile.texture && tile.texture.src && !tile.texture.src.startsWith("http")) {
       console.log(`\nMigrating: ${tile.title}`);
       
-      const filePath = path.join(projectRoot, tile.texture.src);
+      const normalizedSrc = path.normalize(tile.texture.src.replace(/^\/+/, ""));
+      const filePath = path.join(projectRoot, normalizedSrc);
+      const relative = path.relative(projectRoot, filePath);
+      if (path.isAbsolute(relative) || relative.startsWith("..")) {
+        console.error(`  ❌ Failed to process ${tile.texture.src}: Invalid texture path traversal`);
+        continue;
+      }
       try {
         const buffer = await fs.readFile(filePath);
         const filename = path.basename(filePath);

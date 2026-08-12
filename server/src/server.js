@@ -7,9 +7,11 @@ import { Admin, migrateAdminUsernames } from "./models/admin.js";
 // unset, so local dev keeps working on disk storage. Fails fast when a URI is
 // configured but unreachable.
 try {
-  await connectDb();
-  await migrateAdminUsernames();
-  await Admin.init();
+  const connection = await connectDb();
+  if (connection) {
+    await migrateAdminUsernames();
+    await Admin.init();
+  }
   if (CLOUDINARY_CLOUD_NAME) {
     console.log(`[cloudinary] CDN configured (cloud: ${CLOUDINARY_CLOUD_NAME})`);
   }

@@ -47,8 +47,7 @@ router.post("/register", requireAuth, requireRole("superadmin"), async (req, res
       role,
     });
 
-    const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    // No cookie assignment on register to preserve existing superadmin session
     
     res.status(201).json({ ok: true, user: admin.toJSON() });
   } catch (error) {
@@ -77,7 +76,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
     }
 
     const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" });
     
     res.json({ ok: true, user: admin.toJSON() });
   } catch (error) {

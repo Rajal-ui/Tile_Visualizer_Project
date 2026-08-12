@@ -18,7 +18,7 @@ import { JWT_SECRET } from "../src/config/env.js";
 const layoutStore = new Map();
 mock.method(Layout, "findOne", (query) => Promise.resolve(layoutStore.has(query.id) ? { toJSON: () => layoutStore.get(query.id) } : null));
 mock.method(Layout, "findOneAndUpdate", (query, update) => {
-  const updated = { ...layoutStore.get(query.id), ...update.$set };
+  const updated = { ...layoutStore.get(query.id), ...(update.$set || update.$setOnInsert) };
   layoutStore.set(query.id, updated);
   return Promise.resolve({ toJSON: () => updated });
 });

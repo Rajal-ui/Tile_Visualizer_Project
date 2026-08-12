@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { ADMIN_CREDENTIALS, SESSION_KEY } from "./auth.constants.js";
 
 const AuthContext = createContext(null);
@@ -7,8 +7,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const abortRef = useRef(null);
+
   useEffect(() => {
-    fetch("/api/auth/me")
+    abortRef.current = new AbortController();
+    fetch("/api/auth/me", { signal: abortRef.current.signal })
       .then((res) => res.json())
       .then((data) => {
         if (data.ok && data.user) {
@@ -17,13 +20,16 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       })
-      .catch(() => {
-        setUser(null);
+      .catch((err) => {
+        if (err.name !== 'AbortError') setUser(null);
       })
       .finally(() => setLoading(false));
+
+    return () => abortRef.current?.abort();
   }, []);
 
   const login = async (username, password) => {
+    abortRef.current?.abort();
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -44,6 +50,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    abortRef.current?.abort();
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (res.ok) {

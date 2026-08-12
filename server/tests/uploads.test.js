@@ -63,6 +63,20 @@ describe("POST /api/uploads", () => {
     assert.strictEqual(res.body.error.includes("Invalid file type"), true);
   });
 
+  it("should reject oversized payloads exceeding the upload limit", async () => {
+    const token = generateToken("superadmin");
+    const buffer = Buffer.alloc(11 * 1024 * 1024, "a"); // 11 MB buffer
+
+    const res = await request(app)
+      .post("/api/uploads")
+      .set("Cookie", [`jwt=${token}`])
+      .attach("image", buffer, { filename: "oversized.png", contentType: "image/png" });
+
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(typeof res.body.error, "string");
+    assert.strictEqual(res.body.error.includes("File too large"), true);
+  });
+
   it("should reject requests without a token (401)", async () => {
     const buffer = Buffer.from([137, 80, 78, 71]);
     const res = await request(app)

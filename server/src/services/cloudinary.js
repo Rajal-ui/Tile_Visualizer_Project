@@ -19,7 +19,7 @@ export const cloudinaryService = {
    * @returns {Promise<{url: string, thumbnailUrl: string, publicId: string}>}
    */
   uploadTileImage: async function(buffer, originalFilename) {
-    if (!CLOUDINARY_CLOUD_NAME) {
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
       throw new Error("Cloudinary is not configured. Please set CLOUDINARY_* environment variables.");
     }
 
@@ -54,7 +54,7 @@ export const cloudinaryService = {
    * @returns {Promise<any>}
    */
   deleteTileImage: async function(publicId) {
-    if (!CLOUDINARY_CLOUD_NAME || !publicId) return;
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET || !publicId) return;
     return cloudinary.uploader.destroy(publicId);
   }
 };

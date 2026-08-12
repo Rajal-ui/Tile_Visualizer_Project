@@ -9,6 +9,30 @@ import { get } from "node:http";
 const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tv-it-"));
 process.env.STORAGE_ROOT = tmpRoot;
 
+import { mock } from "node:test";
+import jwt from "jsonwebtoken";
+import { Layout } from "../src/models/layout.js";
+import { Admin } from "../src/models/admin.js";
+import { JWT_SECRET } from "../src/middleware/requireAuth.js";
+
+const layoutStore = new Map();
+mock.method(Layout, "findOne", (query) => Promise.resolve(layoutStore.has(query.id) ? { toJSON: () => layoutStore.get(query.id) } : null));
+mock.method(Layout, "findOneAndUpdate", (query, update) => {
+  const updated = { ...layoutStore.get(query.id), ...update.$set };
+  layoutStore.set(query.id, updated);
+  return Promise.resolve({ toJSON: () => updated });
+});
+mock.method(Layout, "find", () => ({ lean: () => Promise.resolve(Array.from(layoutStore.values())) }));
+mock.method(Layout, "create", (doc) => {
+  layoutStore.set(doc.id, doc);
+  return Promise.resolve(doc);
+});
+
+// Mock Admin.findById for requireAuth middleware
+mock.method(Admin, "findById", () => Promise.resolve({ role: "admin", username: "testadmin" }));
+
+const testToken = jwt.sign({ id: "test-admin" }, JWT_SECRET, { expiresIn: "1h" });
+
 const { default: app } = await import("../src/app.js");
 
 let server;
@@ -35,7 +59,10 @@ async function getJson(url) {
 async function postJson(url, body) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Cookie": `jwt=${testToken}`
+    },
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -68,7 +95,13 @@ test("POST multipart saves bg/fg + config + rasterized mask", async () => {
   form.append("config", JSON.stringify(cfg));
   form.append("background", new Blob([bg], { type: "image/png" }), "bg.png");
 
-  const res = await fetch(`${baseUrl}/api/layouts/kitchen-iridium`, { method: "POST", body: form });
+  const res = await fetch(`${baseUrl}/api/layouts/kitchen-iridium`, { 
+    method: "POST", 
+    body: form,
+    headers: {
+      "Cookie": `jwt=${testToken}`
+    }
+  });
   const saved = await res.json();
   if (res.status !== 200) {
     console.error("multipart save failed:", saved);

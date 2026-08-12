@@ -5,6 +5,24 @@ import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
 import { LayoutStorage } from "../src/services/layout-storage.js";
+import { mock } from "node:test";
+import { Layout } from "../src/models/layout.js";
+
+mock.method(Layout, "findOne", (query) => {
+  if (query.id === "kitchen-iridium" || query.id === "room-a") {
+    return Promise.resolve({
+      toJSON: () => ({
+        id: query.id,
+        zones: [{ id: "floor", label: "Floor", planes: [{ polygon: [[0, 0], [100, 0], [100, 80], [0, 80]], corners: [[0, 0], [100, 0], [100, 80], [0, 80]] }] }],
+        status: "draft"
+      })
+    });
+  }
+  return Promise.resolve(null);
+});
+mock.method(Layout, "findOneAndUpdate", (query, update) => Promise.resolve({ ...update.$set, toJSON: () => update.$set }));
+mock.method(Layout, "find", () => ({ lean: () => Promise.resolve([{ id: "kitchen-iridium", status: "draft", zoneCount: 1 }]) }));
+mock.method(Layout, "create", (doc) => Promise.resolve(doc));
 
 async function tmpDir() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "tv-test-"));

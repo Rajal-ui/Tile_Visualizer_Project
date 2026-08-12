@@ -21,7 +21,7 @@ mock.method(Layout, "findOne", (query) => {
   return Promise.resolve(null);
 });
 mock.method(Layout, "findOneAndUpdate", (query, update) => Promise.resolve({ ...update.$set, toJSON: () => update.$set }));
-mock.method(Layout, "find", () => ({ lean: () => Promise.resolve([{ id: "kitchen-iridium", status: "draft", zoneCount: 1 }]) }));
+mock.method(Layout, "find", () => ({ lean: () => Promise.resolve([{ id: "kitchen-iridium", status: "draft", zones: [{}] }]) }));
 mock.method(Layout, "create", (doc) => Promise.resolve(doc));
 
 async function tmpDir() {

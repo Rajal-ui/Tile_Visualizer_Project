@@ -167,6 +167,11 @@ export class LayoutStorage {
           
           const raw = await fs.readFile(confPath, "utf-8");
           const config = JSON.parse(raw);
+          config.id = d.name;
+          
+          const { ok, errors } = validateLayout(config);
+          if (!ok) throw new Error(errors.join("; "));
+          
           await Layout.create(config);
         } catch (e) {
           // ignore missing or malformed legacy files

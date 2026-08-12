@@ -3,36 +3,54 @@ import { ADMIN_CREDENTIALS, SESSION_KEY } from "./auth.constants.js";
 
 const AuthContext = createContext(null);
 
-function loadSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(loadSession);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    else localStorage.removeItem(SESSION_KEY);
-  }, [user]);
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const login = (username, password) => {
-    if (
-      username.trim().toLowerCase() === ADMIN_CREDENTIALS.username &&
-      password === ADMIN_CREDENTIALS.password
-    ) {
-      setUser({ username: username.trim(), loginAt: Date.now() });
-      return { ok: true };
+  const login = async (username, password) => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.user) {
+        setUser(data.user);
+        return { ok: true };
+      }
+      
+      return { ok: false, message: data.error || "Invalid credentials." };
+    } catch (err) {
+      return { ok: false, message: "Network error, please try again." };
     }
-    return { ok: false, message: "Invalid username or password." };
   };
 
-  const logout = () => setUser(null);
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {} // Ignore network errors on logout
+    setUser(null);
+  };
 
-  const value = { user, login, logout };
+  const value = { user, login, logout, loading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

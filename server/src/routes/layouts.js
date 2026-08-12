@@ -4,6 +4,8 @@ import multer from "multer";
 import sharp from "sharp";
 import { layoutStorage } from "../services/layout-storage.js";
 import { sanitizeRoomId } from "../services/layout-storage.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireRole } from "../middleware/requireRole.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -35,7 +37,7 @@ router.get("/:roomId/assets/*", async (req, res) => {
   }
 });
 
-router.post("/:roomId", upload.any(), async (req, res) => {
+router.post("/:roomId", requireAuth, requireRole("admin"), upload.any(), async (req, res) => {
   try {
     const { roomId } = req.params;
     sanitizeRoomId(roomId);

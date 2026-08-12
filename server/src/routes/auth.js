@@ -1,7 +1,11 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { Admin } from "../models/index.js";
 import {
   validate,
+  AdminSchema,
+  AdminLoginSchema,
   ForgotPasswordSchema,
   ResetPasswordSchema,
 } from "@tile-visualizer/shared/schemas/index.js";
@@ -12,8 +16,83 @@ import {
   setAdminPassword,
 } from "../services/password-reset.js";
 import { rateLimit } from "../middleware/rate-limit.js";
+import { authRateLimiter } from "../middleware/rateLimiter.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_do_not_use_in_prod";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
+
+router.post("/register", async (req, res) => {
+  const check = validate(AdminSchema, req.body);
+  if (!check.ok) {
+    return res.status(400).json({ error: check.errors.join("; ") });
+  }
+
+  const { username, name, email, password, role } = check.data;
+
+  try {
+    const existing = await Admin.findOne({ $or: [{ username }, { email }] });
+    if (existing) {
+      return res.status(400).json({ error: "Username or email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const admin = await Admin.create({
+      username,
+      name,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    
+    res.status(201).json({ ok: true, user: admin.toJSON() });
+  } catch (error) {
+    console.error("Register error:", error.message);
+    res.status(500).json({ error: "Failed to register user" });
+  }
+});
+
+router.post("/login", authRateLimiter, async (req, res) => {
+  const check = validate(AdminLoginSchema, req.body);
+  if (!check.ok) {
+    return res.status(400).json({ error: check.errors.join("; ") });
+  }
+
+  const { username, password } = check.data;
+
+  try {
+    const admin = await Admin.findOne({ username }).select("+password");
+    if (!admin) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    
+    res.json({ ok: true, user: admin.toJSON() });
+  } catch (error) {
+    console.error("Login error:", error.message);
+    res.status(500).json({ error: "Failed to log in" });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("jwt");
+  res.json({ ok: true });
+});
+
+router.get("/me", requireAuth, (req, res) => {
+  res.json({ ok: true, user: req.user });
+});
 
 // Email-bombing protection: same IP is capped regardless of the email used.
 const forgotPasswordLimiter = rateLimit({

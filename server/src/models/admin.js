@@ -3,6 +3,7 @@ import { ADMIN_ROLES } from "@tile-visualizer/shared/schemas/index.js";
 
 const adminSchema = new mongoose.Schema(
   {
+    username: { type: String, required: true, unique: true, trim: true, lowercase: true },
     name: { type: String, required: true, trim: true },
     email: {
       type: String,

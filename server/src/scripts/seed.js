@@ -22,6 +22,7 @@ import {
   validate,
 } from "@tile-visualizer/shared/schemas/index.js";
 
+const ADMIN_USERNAME = process.env.ADMIN_SEED_USERNAME || "admin";
 const ADMIN_EMAIL = process.env.ADMIN_SEED_EMAIL || "admin@example.com";
 const ADMIN_PASSWORD = process.env.ADMIN_SEED_PASSWORD || "admin123";
 
@@ -135,7 +136,7 @@ async function seed() {
   ]);
 
   // 1. Admin
-  const adminDoc = { name: "Admin", email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: "superadmin" };
+  const adminDoc = { username: ADMIN_USERNAME, name: "Admin", email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: "superadmin" };
   const adminCheck = validate(AdminSchema, adminDoc);
   if (!adminCheck.ok) throw new Error(`Admin seed invalid: ${adminCheck.errors.join("; ")}`);
   const admin = await Admin.create({

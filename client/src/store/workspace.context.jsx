@@ -7,26 +7,14 @@ const WorkspaceContext = createContext(null);
 
 const PREFS_KEY = "tv_prefs";
 
-function loadPrefs() {
-  const defaults = {
-    roomId: "living-room",
-    surface: "Floor",
-    applied: {},
-  };
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    return { ...defaults, ...(raw ? JSON.parse(raw) : {}) };
-  } catch {
-    return defaults;
-  }
-}
+const defaults = {
+  roomId: "living-room",
+  surface: "Floor",
+  applied: {},
+};
 
 export function WorkspaceProvider({ children }) {
-  const [prefs, setPrefs] = useState(loadPrefs);
-
-  useEffect(() => {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-  }, [prefs]);
+  const [prefs, setPrefs] = useState(defaults);
 
   const room = useMemo(() => {
     return rooms.find((x) => x.id === prefs.roomId) || rooms[0];

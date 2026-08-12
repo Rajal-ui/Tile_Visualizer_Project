@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import sharp from "sharp";
 import { validateLayout } from "@tile-visualizer/shared/schemas/layout.js";
+import { Layout } from "../models/layout.js";
 
 const ROOM_ID_RE = /^[a-z0-9][a-z0-9-_]*$/i;
 const FILENAME_RE = /^[a-z0-9._-]+\.(png|jpg|jpeg|webp)$/i;
@@ -88,32 +89,26 @@ export class LayoutStorage {
     const dir = this.roomDir(roomId);
     await fs.mkdir(this.assetsDir(roomId), { recursive: true });
     await fs.mkdir(this.masksDir(roomId), { recursive: true });
-    if (meta) {
-      let config;
-      try {
-        config = await this.readConfig(roomId);
-      } catch {
-        config = null;
-      }
-      if (!config) {
-        const seed = {
-          id: roomId,
-          name: meta.name || roomId,
-          type: meta.type || "photo",
-          background: null,
-          foreground: null,
-          zones: [],
-          status: "draft",
-        };
-        await this.saveConfig(roomId, seed);
-      }
+    
+    let config = await Layout.findOne({ id: roomId });
+    if (!config && meta) {
+      const seed = {
+        id: roomId,
+        name: meta.name || roomId,
+        type: meta.type || "photo",
+        background: null,
+        foreground: null,
+        zones: [],
+        status: "draft",
+      };
+      await this.saveConfig(roomId, seed);
     }
   }
 
   async readConfig(roomId) {
-    const file = this.configPath(roomId);
-    const raw = await fs.readFile(file, "utf8");
-    return JSON.parse(raw);
+    const config = await Layout.findOne({ id: roomId });
+    if (!config) throw new Error(`Layout not found: ${roomId}`);
+    return config.toJSON();
   }
 
   async saveConfig(roomId, config) {
@@ -123,39 +118,29 @@ export class LayoutStorage {
       errors.unshift(`Layout config for "${roomId}" invalid`);
       throw new Error(errors.join("; "));
     }
-    await this.ensureLayout(roomId);
-    const file = this.configPath(roomId);
-    await fs.writeFile(file, JSON.stringify(config, null, 2), "utf8");
-    return config;
+    
+    await fs.mkdir(this.assetsDir(roomId), { recursive: true });
+    await fs.mkdir(this.masksDir(roomId), { recursive: true });
+
+    const updated = await Layout.findOneAndUpdate(
+      { id: roomId },
+      { $set: config },
+      { new: true, upsert: true }
+    );
+    return updated.toJSON();
   }
 
   async listLayouts() {
-    let dirs;
-    try {
-      dirs = await fs.readdir(this.root, { withFileTypes: true });
-    } catch (e) {
-      if (e.code === "ENOENT") return [];
-      throw e;
-    }
-    const out = [];
-    for (const d of dirs) {
-      if (!d.isDirectory()) continue;
-      try {
-        const cfg = await this.readConfig(d.name);
-        out.push({
-          id: cfg.id || d.name,
-          name: cfg.name || d.name,
-          type: cfg.type,
-          status: cfg.status,
-          hasBackground: !!cfg.background,
-          hasForeground: !!cfg.foreground,
-          zoneCount: cfg.zones?.length || 0,
-        });
-      } catch {
-        // no config.json yet -> empty draft dir
-      }
-    }
-    return out;
+    const layouts = await Layout.find({}).lean();
+    return layouts.map(cfg => ({
+      id: cfg.id,
+      name: cfg.name,
+      type: cfg.type,
+      status: cfg.status,
+      hasBackground: !!cfg.background,
+      hasForeground: !!cfg.foreground,
+      zoneCount: cfg.zones?.length || 0,
+    }));
   }
 
   async writeAssetBuffer(roomId, kind, buffer, filename) {

@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import sharp from "sharp";
 import { validateLayout } from "@tile-visualizer/shared/schemas/layout.js";
+import { Layout } from "../models/layout.js";
+import mongoose from "mongoose";
 
 const ROOM_ID_RE = /^[a-z0-9][a-z0-9-_]*$/i;
 const FILENAME_RE = /^[a-z0-9._-]+\.(png|jpg|jpeg|webp)$/i;
@@ -88,34 +90,44 @@ export class LayoutStorage {
     const dir = this.roomDir(roomId);
     await fs.mkdir(this.assetsDir(roomId), { recursive: true });
     await fs.mkdir(this.masksDir(roomId), { recursive: true });
-    if (meta) {
-      let config;
-      try {
-        config = await this.readConfig(roomId);
-      } catch {
-        config = null;
-      }
-      if (!config) {
-        const seed = {
-          id: roomId,
-          name: meta.name || roomId,
-          type: meta.type || "photo",
-          background: null,
-          foreground: null,
-          zones: [],
-          status: "draft",
-        };
-        await this.saveConfig(roomId, seed);
-      }
+    
+    let config = await Layout.findOne({ id: roomId });
+    if (!config && meta) {
+      const seed = {
+        id: roomId,
+        name: meta.name || roomId,
+        type: meta.type || "photo",
+        background: null,
+        foreground: null,
+        zones: [],
+        status: "draft",
+      };
+      await this.saveConfig(roomId, seed);
     }
   }
 
+  /**
+   * Reads a layout configuration by its room ID.
+   * Runs the legacy filesystem migration before retrieving from the database.
+   * @param {string} roomId - The unique identifier of the room layout.
+   * @returns {Promise<Object>} The layout configuration object.
+   * @throws {Error} If the layout is not found.
+   */
   async readConfig(roomId) {
-    const file = this.configPath(roomId);
-    const raw = await fs.readFile(file, "utf8");
-    return JSON.parse(raw);
+    await this._migrateLegacyLayouts();
+    const config = await Layout.findOne({ id: roomId });
+    if (!config) throw new Error(`Layout not found: ${roomId}`);
+    return config.toJSON();
   }
 
+  /**
+   * Saves or updates a layout configuration in the database.
+   * Validates the configuration before saving and ensures necessary asset directories exist.
+   * @param {string} roomId - The unique identifier of the room layout.
+   * @param {Object} config - The layout configuration to save.
+   * @returns {Promise<Object>} The updated layout configuration object.
+   * @throws {Error} If the layout configuration is invalid.
+   */
   async saveConfig(roomId, config) {
     sanitizeRoomId(roomId);
     const { ok, errors } = validateLayout(config);
@@ -123,39 +135,84 @@ export class LayoutStorage {
       errors.unshift(`Layout config for "${roomId}" invalid`);
       throw new Error(errors.join("; "));
     }
-    await this.ensureLayout(roomId);
-    const file = this.configPath(roomId);
-    await fs.writeFile(file, JSON.stringify(config, null, 2), "utf8");
-    return config;
+    
+    await fs.mkdir(this.assetsDir(roomId), { recursive: true });
+    await fs.mkdir(this.masksDir(roomId), { recursive: true });
+
+    const updated = await Layout.findOneAndUpdate(
+      { id: roomId },
+      { $set: config },
+      { new: true, upsert: true }
+    );
+    return updated.toJSON();
   }
 
-  async listLayouts() {
-    let dirs;
-    try {
-      dirs = await fs.readdir(this.root, { withFileTypes: true });
-    } catch (e) {
-      if (e.code === "ENOENT") return [];
-      throw e;
-    }
-    const out = [];
-    for (const d of dirs) {
-      if (!d.isDirectory()) continue;
+  /**
+   * Migrates legacy layout configurations from the local filesystem to the MongoDB database.
+   * This is an idempotent operation that skips if already migrated or if the database is disconnected.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _migrateLegacyLayouts() {
+    if (this._migrated || mongoose.connection.readyState === 0) return;
+    if (this._migrationPromise) return this._migrationPromise;
+
+    this._migrationPromise = (async () => {
       try {
-        const cfg = await this.readConfig(d.name);
-        out.push({
-          id: cfg.id || d.name,
-          name: cfg.name || d.name,
-          type: cfg.type,
-          status: cfg.status,
-          hasBackground: !!cfg.background,
-          hasForeground: !!cfg.foreground,
-          zoneCount: cfg.zones?.length || 0,
-        });
-      } catch {
-        // no config.json yet -> empty draft dir
+        const dirs = await fs.readdir(this.root, { withFileTypes: true });
+        for (const d of dirs) {
+          if (!d.isDirectory()) continue;
+          const confPath = path.join(this.root, d.name, "config.json");
+          
+          const exists = await Layout.findOne({ id: d.name });
+          if (exists) continue;
+          
+          let raw, config;
+          try {
+            raw = await fs.readFile(confPath, "utf-8");
+            config = JSON.parse(raw);
+          } catch (e) {
+            continue; // ignore missing or malformed files
+          }
+
+          config.id = d.name;
+          
+          const { ok, errors } = validateLayout(config);
+          if (!ok) continue; // ignore invalid legacy configurations
+          
+          await Layout.create(config);
+        }
+        this._migrated = true;
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          this._migrated = true;
+          return;
+        }
+        throw e;
+      } finally {
+        this._migrationPromise = null;
       }
-    }
-    return out;
+    })();
+    return this._migrationPromise;
+  }
+
+  /**
+   * Lists all available layout configurations from the database.
+   * Runs the legacy filesystem migration before retrieving.
+   * @returns {Promise<Array<Object>>} An array of summary layout objects.
+   */
+  async listLayouts() {
+    await this._migrateLegacyLayouts();
+    const layouts = await Layout.find({}).lean();
+    return layouts.map(cfg => ({
+      id: cfg.id,
+      name: cfg.name,
+      type: cfg.type,
+      status: cfg.status,
+      hasBackground: !!cfg.background,
+      hasForeground: !!cfg.foreground,
+      zoneCount: cfg.zones?.length || 0,
+    }));
   }
 
   async writeAssetBuffer(roomId, kind, buffer, filename) {

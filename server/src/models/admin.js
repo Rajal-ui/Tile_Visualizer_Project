@@ -3,6 +3,7 @@ import { ADMIN_ROLES } from "@tile-visualizer/shared/schemas/index.js";
 
 const adminSchema = new mongoose.Schema(
   {
+    username: { type: String, required: true, unique: true, trim: true, lowercase: true },
     name: { type: String, required: true, trim: true },
     email: {
       type: String,
@@ -34,3 +35,16 @@ adminSchema.set("toJSON", {
 
 export const Admin =
   mongoose.models.Admin || mongoose.model("Admin", adminSchema);
+
+export async function migrateAdminUsernames() {
+  const missing = await Admin.find({ username: { $exists: false } });
+  for (const admin of missing) {
+    const fallback = admin.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+    let proposed = fallback;
+    let i = 1;
+    while (await Admin.findOne({ username: proposed })) {
+      proposed = `${fallback}${i++}`;
+    }
+    await Admin.updateOne({ _id: admin._id }, { $set: { username: proposed } });
+  }
+}

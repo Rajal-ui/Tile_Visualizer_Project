@@ -14,6 +14,7 @@ const OID = "0123456789abcdef01234567";
 test("shared Zod schemas accept valid documents", () => {
   assert.ok(
     AdminSchema.safeParse({
+      username: "testadmin",
       name: "Admin",
       email: "admin@example.com",
       password: "password123",

@@ -34,6 +34,19 @@ function fakeAdmin(overrides = {}) {
 test.before(() => {
   store = [];
   mock.method(Admin, "findOne", (query) => {
+    if (query.$or) {
+      const usernameQuery = query.$or[0].username;
+      const emailQuery = query.$or[1].email;
+      return Promise.resolve(store.find((a) => a.username === usernameQuery || a.email === emailQuery) || null);
+    }
+    if (query.username != null) {
+      const admin = store.find((a) => a.username === query.username) || null;
+      return {
+        select: () => Promise.resolve(admin),
+        then: (res, rej) => Promise.resolve(admin).then(res, rej),
+        catch: (rej) => Promise.resolve(admin).catch(rej),
+      };
+    }
     if (query.email != null) {
       return Promise.resolve(store.find((a) => a.email === query.email) || null);
     }
@@ -44,6 +57,30 @@ test.before(() => {
     }
     return Promise.resolve(null);
   });
+  
+  mock.method(Admin, "create", async (data) => {
+    const newAdmin = {
+      ...data,
+      _id: "fake-id",
+      toJSON() { return { username: this.username, email: this.email, name: this.name, role: this.role }; },
+    };
+    store.push(newAdmin);
+    return Promise.resolve(newAdmin);
+  });
+  
+  mock.method(Admin, "findById", (id) => {
+    if (id === "super-id") {
+      return Promise.resolve({
+        _id: "super-id",
+        role: "superadmin",
+        username: "superadmin",
+        toJSON() { return { username: "superadmin", role: "superadmin" }; }
+      });
+    }
+    if (id === "fake-id") return Promise.resolve(store[0]);
+    return Promise.resolve(null);
+  });
+  
   server = app.listen(0);
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
@@ -53,11 +90,20 @@ test.after(() => {
   server.close();
 });
 
-async function postJson(url, body) {
+async function postJson(url, body, headers = {}) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, json: text ? JSON.parse(text) : null, headers: res.headers };
+}
+
+async function getJson(url, headers = {}) {
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json", ...headers },
   });
   const text = await res.text();
   return { status: res.status, json: text ? JSON.parse(text) : null };
@@ -136,7 +182,53 @@ test("forgot/reset request schemas validate bodies", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Route integration tests
+// Route integration tests (Register, Login, Me)
+// ---------------------------------------------------------------------------
+
+test("POST /api/auth/register creates an admin and returns JWT", async () => {
+  const jwt = await import("jsonwebtoken");
+  const token = jwt.default.sign({ id: "super-id" }, process.env.JWT_SECRET || "test_secret", { expiresIn: "1h" });
+
+  const res = await postJson(`${baseUrl}/api/auth/register`, {
+    username: "newadmin",
+    name: "New Admin",
+    email: "new@example.com",
+    password: "password123",
+  }, { Cookie: `jwt=${token}` });
+  assert.equal(res.status, 201);
+  assert.equal(res.json.user.username, "newadmin");
+  const cookies = res.headers.get("set-cookie");
+  assert.ok(cookies?.includes("jwt="), "sets jwt cookie");
+});
+
+test("POST /api/auth/login authenticates admin and returns JWT", async () => {
+  const password = "password123";
+  const hashedPassword = await bcrypt.hash(password, 10);
+  store.push({
+    _id: "fake-id",
+    username: "loginadmin",
+    password: hashedPassword,
+    toJSON() { return { username: "loginadmin" }; }
+  });
+
+  const res = await postJson(`${baseUrl}/api/auth/login`, {
+    username: "loginadmin",
+    password: "password123",
+  });
+  
+  assert.equal(res.status, 200);
+  assert.equal(res.json.ok, true);
+  const cookies = res.headers.get("set-cookie");
+  assert.ok(cookies?.includes("jwt="), "sets jwt cookie on login");
+});
+
+test("GET /api/auth/me returns 401 without cookie", async () => {
+  const res = await getJson(`${baseUrl}/api/auth/me`);
+  assert.equal(res.status, 401);
+});
+
+// ---------------------------------------------------------------------------
+// Route integration tests (Forgot Password)
 // ---------------------------------------------------------------------------
 
 test("POST /api/auth/forgot-password validates email format", async () => {

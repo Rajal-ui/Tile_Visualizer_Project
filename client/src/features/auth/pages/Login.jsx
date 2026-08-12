@@ -10,7 +10,7 @@ export default function Login({ onForgotPassword }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password) {
       setError("Please enter both username and password.");
@@ -18,13 +18,12 @@ export default function Login({ onForgotPassword }) {
     }
     setLoading(true);
     setError(null);
-    setTimeout(() => {
-      const res = login(username, password);
-      if (!res.ok) {
-        setError(res.message);
-        setLoading(false);
-      }
-    }, 450);
+    
+    const res = await login(username, password);
+    if (!res.ok) {
+      setError(res.message);
+      setLoading(false);
+    }
   };
 
   return (

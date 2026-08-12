@@ -150,7 +150,7 @@ jobs:
             import { AdminSchema, TileSchema, CategoryTemplateSchema } from './shared/schemas/index.js';
             const oid = '0123456789abcdef01234567';
             const checks = [
-              AdminSchema.safeParse({ name: 'A', email: 'a@b.c', password: 'password123', role: 'superadmin' }).success,
+              AdminSchema.safeParse({ name: 'A', email: 'a@b.co', password: 'password123', role: 'superadmin' }).success,
               TileSchema.safeParse({ title: 'X', category: oid, properties: {} }).success,
               CategoryTemplateSchema.safeParse({ name: 'F', room: 'kitchen', type: 'floor' }).success,
             ];

@@ -8,7 +8,7 @@
 
 export { z } from "zod";
 export { MONGO_ID_PATTERN, MongoObjectId } from "./id.schema.js";
-export { ADMIN_ROLES, AdminSchema, AdminLoginSchema } from "./auth.schema.js";
+export { ADMIN_ROLES, AdminSchema, AdminLoginSchema, ForgotPasswordSchema, ResetPasswordSchema } from "./auth.schema.js";
 export { ROOM_IDS, TEMPLATE_TYPES, CategoryTemplateSchema } from "./template.schema.js";
 export {
   TileSchema,

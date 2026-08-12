@@ -14,6 +14,8 @@ const adminSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ADMIN_ROLES, default: "admin" },
+    resetTokenHash: { type: String, select: false, default: null },
+    resetTokenExpiresAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -21,6 +23,8 @@ const adminSchema = new mongoose.Schema(
 adminSchema.set("toJSON", {
   transform(_doc, ret) {
     delete ret.password;
+    delete ret.resetTokenHash;
+    delete ret.resetTokenExpiresAt;
     ret.id = ret._id.toString();
     delete ret._id;
     delete ret.__v;

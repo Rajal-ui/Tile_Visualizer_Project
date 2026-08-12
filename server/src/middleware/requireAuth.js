@@ -6,6 +6,14 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is missing");
 }
 
+/**
+ * Middleware that authenticates an incoming request using a JWT token.
+ * Validates the token from cookies or the Authorization header and attaches the user document to the request.
+ * @param {import('express').Request} req - The Express request object.
+ * @param {import('express').Response} res - The Express response object.
+ * @param {import('express').NextFunction} next - The Express next middleware function.
+ * @returns {Promise<void>}
+ */
 export const requireAuth = async (req, res, next) => {
   try {
     const token = req.cookies.jwt || req.headers.authorization?.split(" ")[1];

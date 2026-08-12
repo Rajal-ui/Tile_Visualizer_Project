@@ -106,6 +106,13 @@ export class LayoutStorage {
     }
   }
 
+  /**
+   * Reads a layout configuration by its room ID.
+   * Runs the legacy filesystem migration before retrieving from the database.
+   * @param {string} roomId - The unique identifier of the room layout.
+   * @returns {Promise<Object>} The layout configuration object.
+   * @throws {Error} If the layout is not found.
+   */
   async readConfig(roomId) {
     await this._migrateLegacyLayouts();
     const config = await Layout.findOne({ id: roomId });
@@ -113,6 +120,14 @@ export class LayoutStorage {
     return config.toJSON();
   }
 
+  /**
+   * Saves or updates a layout configuration in the database.
+   * Validates the configuration before saving and ensures necessary asset directories exist.
+   * @param {string} roomId - The unique identifier of the room layout.
+   * @param {Object} config - The layout configuration to save.
+   * @returns {Promise<Object>} The updated layout configuration object.
+   * @throws {Error} If the layout configuration is invalid.
+   */
   async saveConfig(roomId, config) {
     sanitizeRoomId(roomId);
     const { ok, errors } = validateLayout(config);
@@ -132,6 +147,12 @@ export class LayoutStorage {
     return updated.toJSON();
   }
 
+  /**
+   * Migrates legacy layout configurations from the local filesystem to the MongoDB database.
+   * This is an idempotent operation that skips if already migrated or if the database is disconnected.
+   * @returns {Promise<void>}
+   * @private
+   */
   async _migrateLegacyLayouts() {
     if (this._migrated || mongoose.connection.readyState === 0) return;
     this._migrated = true;
@@ -156,6 +177,11 @@ export class LayoutStorage {
     }
   }
 
+  /**
+   * Lists all available layout configurations from the database.
+   * Runs the legacy filesystem migration before retrieving.
+   * @returns {Promise<Array<Object>>} An array of summary layout objects.
+   */
   async listLayouts() {
     await this._migrateLegacyLayouts();
     const layouts = await Layout.find({}).lean();

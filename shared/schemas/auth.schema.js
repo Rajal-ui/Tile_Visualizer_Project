@@ -16,3 +16,14 @@ export const AdminLoginSchema = z.object({
   email: z.string().email("A valid email is required"),
   password: z.string().min(1, "Password is required"),
 });
+
+/** Forgot-password request body. */
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("A valid email is required"),
+});
+
+/** Reset-password request body. */
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});

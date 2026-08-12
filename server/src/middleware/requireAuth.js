@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Admin } from "../models/admin.js";
+import { JWT_SECRET } from "../config/env.js";
 
-export const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "test" ? "test_secret" : null);
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is missing");
 }

@@ -157,6 +157,9 @@ function solid(t, seed) {
 
 export function textureSvg(t) {
   if (t.kind === "image" && t.src) {
+    if (t.src.startsWith("http://") || t.src.startsWith("https://")) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}"><image width="${SIZE}" height="${SIZE}" href="${encodeURI(t.src)}" preserveAspectRatio="none"/></svg>`;
+    }
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}"><image width="${SIZE}" height="${SIZE}" href="${encodeURI(t.src)}" preserveAspectRatio="none"/></svg>`;
   }
   const seed = t.seed ?? hash(t.name ?? "tile");
@@ -188,7 +191,15 @@ export function textureSvg(t) {
 
 export function textureUrl(t) {
   if (t.kind === "image" && t.src) {
+    if (t.src.startsWith("http://") || t.src.startsWith("https://")) {
+      return t.src;
+    }
     return encodeURI(t.src);
   }
   return "data:image/svg+xml," + encodeURIComponent(textureSvg(t));
+}
+
+export function textureThumbnailUrl(tile) {
+  if (tile.thumbnailUrl) return tile.thumbnailUrl;
+  return textureUrl(tile.texture);
 }

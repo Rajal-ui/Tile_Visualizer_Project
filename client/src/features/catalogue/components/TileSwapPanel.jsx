@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { X, ChevronRight, Grid3X3 } from "lucide-react";
 import { tilesForRoom } from "@/features/catalogue/data/tiles.js";
 import { useWorkspace } from "@/store/workspace.context.jsx";
-import { textureUrl } from "@/lib/textures.js";
+import { textureThumbnailUrl, textureUrl } from "@/lib/textures.js";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileSwapPanel({ onOpenCatalogue }) {
@@ -46,7 +46,7 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
           <div className="flex items-center gap-2.5">
             <div
               className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 bg-cover bg-center"
-              style={{ backgroundImage: `url(${textureUrl(activeTile.texture)})` }}
+              style={{ backgroundImage: `url(${textureThumbnailUrl(activeTile)})` }}
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-slate-800">{activeTile.name}</p>
@@ -101,7 +101,7 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
                 <div className="aspect-square w-full overflow-hidden bg-slate-100">
                   <div
                     className="h-full w-full bg-cover bg-center transition duration-200 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${textureUrl(tile.texture)})` }}
+                    style={{ backgroundImage: `url(${textureThumbnailUrl(tile)})` }}
                   />
                 </div>
                 <div className="bg-white px-1.5 py-1">

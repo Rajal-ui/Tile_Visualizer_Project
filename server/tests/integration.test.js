@@ -13,7 +13,7 @@ import { mock } from "node:test";
 import jwt from "jsonwebtoken";
 import { Layout } from "../src/models/layout.js";
 import { Admin } from "../src/models/admin.js";
-import { JWT_SECRET } from "../src/middleware/requireAuth.js";
+import { JWT_SECRET } from "../src/config/env.js";
 
 const layoutStore = new Map();
 mock.method(Layout, "findOne", (query) => Promise.resolve(layoutStore.has(query.id) ? { toJSON: () => layoutStore.get(query.id) } : null));

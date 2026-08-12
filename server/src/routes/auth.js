@@ -17,7 +17,8 @@ import {
 } from "../services/password-reset.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
-import { requireAuth, JWT_SECRET } from "../middleware/requireAuth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { JWT_SECRET } from "../config/env.js";
 import { requireRole } from "../middleware/requireRole.js";
 
 const router = Router();

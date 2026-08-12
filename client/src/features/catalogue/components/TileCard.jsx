@@ -1,6 +1,6 @@
 import { IndianRupee, Layers, ZoomIn } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
-import { textureUrl } from "@/lib/textures.js";
+import { textureThumbnailUrl } from "@/lib/textures.js";
 
 export default function TileCard({ tile, onSelect, onApply }) {
   const { surface } = useWorkspace();
@@ -13,7 +13,7 @@ export default function TileCard({ tile, onSelect, onApply }) {
           <div
             className="h-full w-full"
             style={{
-              backgroundImage: `url(${textureUrl(tile.texture)})`,
+              backgroundImage: `url(${textureThumbnailUrl(tile)})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}

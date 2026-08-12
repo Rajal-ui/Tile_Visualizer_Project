@@ -155,31 +155,45 @@ export class LayoutStorage {
    */
   async _migrateLegacyLayouts() {
     if (this._migrated || mongoose.connection.readyState === 0) return;
-    this._migrated = true;
-    try {
-      const dirs = await fs.readdir(this.root, { withFileTypes: true });
-      for (const d of dirs) {
-        if (!d.isDirectory()) continue;
-        const confPath = path.join(this.root, d.name, "config.json");
-        try {
+    if (this._migrationPromise) return this._migrationPromise;
+
+    this._migrationPromise = (async () => {
+      try {
+        const dirs = await fs.readdir(this.root, { withFileTypes: true });
+        for (const d of dirs) {
+          if (!d.isDirectory()) continue;
+          const confPath = path.join(this.root, d.name, "config.json");
+          
           const exists = await Layout.findOne({ id: d.name });
           if (exists) continue;
           
-          const raw = await fs.readFile(confPath, "utf-8");
-          const config = JSON.parse(raw);
+          let raw, config;
+          try {
+            raw = await fs.readFile(confPath, "utf-8");
+            config = JSON.parse(raw);
+          } catch (e) {
+            continue; // ignore missing or malformed files
+          }
+
           config.id = d.name;
           
           const { ok, errors } = validateLayout(config);
-          if (!ok) throw new Error(errors.join("; "));
+          if (!ok) continue; // ignore invalid legacy configurations
           
           await Layout.create(config);
-        } catch (e) {
-          // ignore missing or malformed legacy files
         }
+        this._migrated = true;
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          this._migrated = true;
+          return;
+        }
+        throw e;
+      } finally {
+        this._migrationPromise = null;
       }
-    } catch (e) {
-      // ignore root directory missing
-    }
+    })();
+    return this._migrationPromise;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
 import Login from "@/features/auth/pages/Login.jsx";
 import ForgotPassword from "@/features/auth/pages/ForgotPassword.jsx";
@@ -9,17 +9,30 @@ function readResetToken() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get("token");
   const isResetPath = url.pathname.replace(/\/+$/, "").endsWith("/reset-password");
-  if (isResetPath && token) {
-    window.history.replaceState({}, "", url.pathname);
-    return token;
-  }
-  return null;
+  return isResetPath && token ? token : null;
 }
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [resetToken] = useState(readResetToken);
   const [view, setView] = useState(resetToken ? "reset-password" : "login");
+
+  useEffect(() => {
+    if (resetToken) {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [resetToken]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-400">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400/30 border-t-slate-400" />
+          Checking session…
+        </div>
+      </div>
+    );
+  }
 
   if (user) return <Dashboard />;
 

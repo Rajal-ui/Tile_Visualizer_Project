@@ -22,6 +22,13 @@ import {
   validate,
 } from "@tile-visualizer/shared/schemas/index.js";
 
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.ADMIN_SEED_USERNAME || !process.env.ADMIN_SEED_EMAIL || !process.env.ADMIN_SEED_PASSWORD) {
+    console.error("❌ Missing explicit ADMIN_SEED_* environment variables in production.");
+    process.exit(1);
+  }
+}
+
 const ADMIN_USERNAME = process.env.ADMIN_SEED_USERNAME || "admin";
 const ADMIN_EMAIL = process.env.ADMIN_SEED_EMAIL || "admin@example.com";
 const ADMIN_PASSWORD = process.env.ADMIN_SEED_PASSWORD || "admin123";

@@ -43,17 +43,16 @@ npm test
 npm run db:seed
 ```
 
-> **Note on credentials:** the demo admin credentials are hardcoded on the
-> client (`client/src/features/auth/auth.constants.js`) and hidden from the
-> sign-in screen. Do not rely on these hardcoded credentials in production —
-> see `docs/architecture.md`.
+> **Note on credentials:** admin accounts are stored in MongoDB (seeded via
+> `npm run db:seed`, defaults `admin` / `admin123` in `server/.env.example`) and
+> verified against the API — no credentials exist in the client bundle.
 
 ## Environment variables
 
 Each workspace has its own `.env.example`. Copy one to `.env` in that workspace
 and fill in real values. No `.env` files are committed.
 
-- `client/.env.example` — `VITE_API_URL` (used once the server is wired up)
+- `client/.env.example` — `VITE_API_URL` (optional; leave unset in dev to use the Vite `/api` proxy)
 - `server/.env.example` — `PORT`, `NODE_ENV`, `MONGODB_URI` (optional)
 
 ## Documentation

@@ -19,9 +19,12 @@ export default function Login({ onForgotPassword }) {
     setLoading(true);
     setError(null);
     
-    const res = await login(username, password);
-    if (!res.ok) {
-      setError(res.message);
+    try {
+      const res = await login(username, password);
+      if (!res.ok) {
+        setError(res.message);
+      }
+    } finally {
       setLoading(false);
     }
   };

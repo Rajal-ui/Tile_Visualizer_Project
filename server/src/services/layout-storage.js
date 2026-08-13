@@ -135,6 +135,10 @@ export class LayoutStorage {
       errors.unshift(`Layout config for "${roomId}" invalid`);
       throw new Error(errors.join("; "));
     }
+
+    if (config.id && config.id !== roomId) {
+      throw new Error(`Layout ID mismatch: URL parameter "${roomId}" does not match config id "${config.id}"`);
+    }
     
     await fs.mkdir(this.assetsDir(roomId), { recursive: true });
     await fs.mkdir(this.masksDir(roomId), { recursive: true });
@@ -164,9 +168,6 @@ export class LayoutStorage {
           if (!d.isDirectory()) continue;
           const confPath = path.join(this.root, d.name, "config.json");
           
-          const exists = await Layout.findOne({ id: d.name });
-          if (exists) continue;
-          
           let raw, config;
           try {
             raw = await fs.readFile(confPath, "utf-8");
@@ -180,7 +181,11 @@ export class LayoutStorage {
           const { ok, errors } = validateLayout(config);
           if (!ok) continue; // ignore invalid legacy configurations
           
-          await Layout.create(config);
+          await Layout.findOneAndUpdate(
+            { id: config.id },
+            { $setOnInsert: config },
+            { upsert: true }
+          );
         }
         this._migrated = true;
       } catch (e) {

@@ -10,11 +10,13 @@ tile textures and the CSS-scene rooms remain procedurally/static on the client.
 
 - **Framework**: React 18 + Vite 6 + Tailwind CSS 3.
 - **Entry point**: `client/src/main.jsx` → `app/providers.jsx` → `app/App.jsx`.
-- **Auth (frontend-only)**: `features/auth/auth.context.jsx` provides `useAuth()`
-  with a single hardcoded admin credential (`auth.constants.js`). The session is
-  persisted to `localStorage` (`tv_admin_session`).
-  > **Warning**: credentials are hardcoded in the client bundle for the current
-  > phase. They must move to the backend (admin authentication) before production.
+- **Auth (backend-backed)**: `features/auth/auth.context.jsx` provides `useAuth()`
+  backed by the Express API — `POST /api/auth/login`, `POST /api/auth/logout`,
+  `GET /api/auth/me`. Credentials are verified against MongoDB (bcrypt-hashed),
+  and the session is an httpOnly JWT cookie. The login page accepts username +
+  password; forgot/reset pages call `POST /api/auth/forgot-password` and
+  `POST /api/auth/reset-password`. The persisted session is validated against
+  `/me` on app load. There are no hardcoded credentials in the client bundle.
 - **Workspace state**: `store/workspace.context.jsx` provides `useWorkspace()`
   with the selected room, active surface, applied tiles, and catalogue dark mode,
   persisted to `localStorage` (`tv_prefs`). Photo-based rooms derive their tileable

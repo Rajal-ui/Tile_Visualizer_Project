@@ -1,5 +1,7 @@
+import { API_BASE } from "@/services/api-base.js";
+
 const api = (path, { method = "GET", body, json = true } = {}) => {
-  const opts = { method, headers: {} };
+  const opts = { method, headers: {}, credentials: "include" };
   if (body != null) {
     if (body instanceof FormData) {
       opts.body = body;
@@ -8,7 +10,7 @@ const api = (path, { method = "GET", body, json = true } = {}) => {
       opts.body = JSON.stringify(body);
     }
   }
-  return fetch(path, opts)
+  return fetch(`${API_BASE}${path}`, opts)
     .catch((e) => {
       const err = new Error(
         `Cannot reach the API server at ${path}. Is \`npm run dev:server\` running?`
@@ -71,5 +73,5 @@ export function saveLayout(roomId, config, opts = {}) {
 }
 
 export function layoutAssetUrl(roomId, assetPath) {
-  return `/api/layouts/${encodeURIComponent(roomId)}/assets/${assetPath.replace(/^\/+/, "")}`;
+  return `${API_BASE}/api/layouts/${encodeURIComponent(roomId)}/assets/${assetPath.replace(/^\/+/, "")}`;
 }

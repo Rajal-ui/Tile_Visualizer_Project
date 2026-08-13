@@ -17,9 +17,20 @@ function readResetToken() {
 }
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [resetToken] = useState(readResetToken);
   const [view, setView] = useState(resetToken ? "reset-password" : "login");
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-400">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400/30 border-t-slate-400" />
+          Checking session…
+        </div>
+      </div>
+    );
+  }
 
   if (user) return <Dashboard />;
 

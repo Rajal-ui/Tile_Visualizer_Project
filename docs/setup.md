@@ -33,7 +33,11 @@ npm run dev:client   # Vite dev server → http://localhost:5173
 npm run dev:server   # Express API       → http://localhost:4000
 ```
 
-The demo admin login is `admin` / `admin123` (hidden in `client/src/features/auth/auth.constants.js`, not shown on the sign-in screen).
+The admin account is created by the database seed (`npm run db:seed`), which
+uses the `ADMIN_SEED_USERNAME`, `ADMIN_SEED_EMAIL` and `ADMIN_SEED_PASSWORD`
+values from `server/.env` (defaults: `admin`, `admin@example.com`, `admin123`).
+Credentials live only in the database — nothing is hardcoded in the client
+bundle.
 
 ## Build and preview
 
@@ -56,7 +60,7 @@ cp server/.env.example server/.env
 
 | Variable        | Workspace | Default           | Purpose                                  |
 | --------------- | --------- | ----------------- | ---------------------------------------- |
-| `VITE_API_URL`  | client    | `http://localhost:4000` | Base URL of the backend API (future) |
+| `VITE_API_URL`  | client    | *(empty — Vite proxy)* | Base URL of the backend API. Leave unset in dev to use the `/api` proxy; set it when the client and API are served from different origins. |
 | `PORT`          | server    | `4000`            | HTTP port for the API                    |
 | `NODE_ENV`      | server    | `development`     | Runtime environment                      |
 | `MONGODB_URI`   | server    | *(none)*          | MongoDB connection string (optional locally; enables the Phase 1 Mongoose layer) |
@@ -82,7 +86,8 @@ tests), `integration.test.js` (HTTP-level API tests), `models.test.js`
 run without a live MongoDB. There is no linter or type-check step configured
 yet.
 
-## Wiring the client to the API (future)
+## Wiring the client to the API
 
-Once the server exposes real endpoints, add a fetch wrapper in
-`client/src/services/` and point it at `import.meta.env.VITE_API_URL`.
+The client talks to the API through `client/src/services/api-base.js`, which
+uses `import.meta.env.VITE_API_URL` as the base when set and otherwise falls
+back to the same origin (the Vite dev proxy forwards `/api/*` to the server).

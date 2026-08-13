@@ -1,10 +1,12 @@
+import { API_BASE } from "@/services/api-base.js";
+
 const api = (path, { method = "GET", body } = {}) => {
-  const opts = { method, headers: {} };
+  const opts = { method, headers: {}, credentials: "include" };
   if (body != null) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
   }
-  return fetch(path, opts)
+  return fetch(`${API_BASE}${path}`, opts)
     .catch((e) => {
       const err = new Error(
         `Cannot reach the API server at ${path}. Is \`npm run dev:server\` running?`

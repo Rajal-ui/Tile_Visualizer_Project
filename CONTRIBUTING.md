@@ -95,13 +95,13 @@ npm run dev:server   # Express API -> http://localhost:4000
 | Client | http://localhost:5173 | Vite dev server with `/api` proxied to port 4000 (`client/vite.config.js`) |
 | Server | http://localhost:4000 | Express API; `GET /health` and `GET /api/layouts/*` |
 
-The demo login is `admin` / `admin123` (shown on the sign-in screen). **Do not rely on these hardcoded credentials in production** — see `docs/architecture.md` and the roadmap in [section 10](#10-future-roadmap).
+The demo admin login is seeded into MongoDB by `npm run db:seed` (defaults in `server/.env.example`: `admin` / `admin123`). Credentials are verified against the API — nothing is hardcoded in the client bundle.
 
 ### Environment Variables
 
 | Variable | Workspace | Required | Default | Notes |
 | -------- | --------- | -------- | ------- | ----- |
-| `VITE_API_URL` | client | No | `http://localhost:4000` | Base URL of the backend API. Exposed to the client bundle via `import.meta.env`. |
+| `VITE_API_URL` | client | No | *(empty — Vite proxy)* | Base URL of the backend API (`client/src/services/api-base.js`). Empty in dev uses the `/api` proxy; set it when the API is served from another origin. |
 | `PORT` | server | No | `4000` | HTTP port for the Express API. |
 | `NODE_ENV` | server | No | `development` | Runtime environment. |
 | `STORAGE_ROOT` | server | No | `storage` | Directory root for layout configs + assets on disk (see `server/src/config/env.js`). |
@@ -201,7 +201,7 @@ tile-visualizer/
 |   +-- src/
 |   |   +-- app/                        # App shell + providers (App.jsx, providers.jsx)
 |   |   +-- features/                   # feature-based organization
-|   |   |   +-- auth/                   # Login page, auth.context, hardcoded admin creds
+|   |   |   +-- auth/                   # Login page, auth.context, forgot/reset pages
 |   |   |   +-- dashboard/              # Dashboard page (shell of the app)
 |   |   |   +-- catalogue/              # Tile list/card/modal, tile + pattern data
 |   |   |   +-- visualizer/             # RoomCanvas, PhotoViewer, compositor libs
@@ -499,7 +499,7 @@ Login (useAuth) --> App.jsx --> Dashboard
                       all read/write workspace.context (store)
 ```
 
-There is **no router** — authenticated vs. public rendering is a conditional in `App.jsx` (`user ? <Dashboard/> : <Login/>`). Workspace state (`selected room`, `active surface`, `applied tiles`) is persisted to `localStorage` (`tv_prefs`); the admin session to `tv_admin_session`.
+There is **no router** — authenticated vs. public rendering is a conditional in `App.jsx` (`user ? <Dashboard/> : <Login/>`). Workspace state (`selected room`, `active surface`, `applied tiles`) is persisted to `localStorage` (`tv_prefs`); the admin session is an httpOnly JWT cookie set by the API, validated against `/api/auth/me` on app load.
 
 ---
 
@@ -507,7 +507,7 @@ There is **no router** — authenticated vs. public rendering is a conditional i
 
 ### Client view (the sales rep / admin)
 
-1. **Log in.** Sign in with the demo admin credentials (`admin` / `admin123`) via `features/auth/pages/Login.jsx`. The session is stored in `localStorage` under `tv_admin_session` (frontend-only — see the security note in [section 10](#10-future-roadmap)).
+1. **Log in.** Sign in with the username + password of an admin seeded into MongoDB (see `npm run db:seed`) via `features/auth/pages/Login.jsx`. The server verifies the credentials (bcrypt) and sets an httpOnly JWT session cookie; the session is re-validated against `/api/auth/me` on app load. Forgot/reset links go through `POST /api/auth/forgot-password` / `reset-password`.
 2. **Pick a room.** `RoomSelector` lists the static CSS rooms (Living Room, Bedroom, Kitchen, Bathroom, Staircase, Exterior). Kitchen is the photo-layout room and renders through the 2-layer Canvas compositor; the others render through the CSS `PhotoViewer`.
 3. **Choose a surface.** `TileSwapPanel` shows tabs for the room's tileable surfaces — for photo layouts these come from `layout.zones` labels (Floor / Wall / Counter); for CSS rooms the defaults are Floor / Wall / Accent Wall.
 4. **Browse the catalogue.** `TileCatalogue` filters by category, finish, material, and free-text search; the detail modal shows specs; **Apply** binds the tile to the active surface.
@@ -643,7 +643,7 @@ npm run dev         # smoke-test the app locally
 
 Then manually check the relevant area (mirroring the PR template's checklist):
 
-- The application runs locally and the demo login works (`admin` / `admin123`)
+- The application runs locally and the seeded admin login works (see `npm run db:seed`)
 - The production build passes
 - The feature was tested manually in the browser
 - Responsive layout looks correct
@@ -659,7 +659,7 @@ Then manually check the relevant area (mirroring the PR template's checklist):
 
 Prioritized from `docs/prd.md` and `docs/api.md`. Contributions in these areas should first raise an issue so scope and approach are agreed.
 
-1. **Backend admin authentication.** Move the hardcoded `admin`/`admin123` credentials out of the client bundle (`features/auth/auth.constants.js`) into real server-side auth (`POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`) with roles (Admin vs Client) and token handling.
+1. **Auth roles & hardening.** Backend auth exists (`/api/auth/login`, `logout`, `me`, register, forgot/reset). Remaining: role guards for all protected routes (Admin vs Client), token rotation/refresh, and rate-limit tuning before production.
 2. **Tile catalogue management.** CRUD APIs for the catalogue (`/api/tiles`), category/dimension/format management, and texture upload (`/api/uploads`), replacing static data in `client/src/features/catalogue/data/tiles.js`.
 3. **Persistence & cloud storage.** Phase 1 laid the MongoDB foundation (models + seed, see `server/src/models/`), but no CRUD API uses it yet. Build repositories/controllers and the `/api/projects`, `/api/customers` endpoints, or point the S3-ready `LayoutStorage` interface at cloud object storage for layouts and assets.
 4. **Pattern & grout rendering.** Implement compositor-level support for the patterns already defined in `pattern-labels.js` (brick, diagonal, herringbone, hexagon) plus configurable grout thickness/color instead of baking grout into textures.

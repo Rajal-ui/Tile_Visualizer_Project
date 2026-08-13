@@ -1,4 +1,5 @@
 import { Router } from "express";
+import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
 import sharp from "sharp";
@@ -28,8 +29,19 @@ router.get("/:roomId", async (req, res) => {
 
 router.get("/:roomId/assets/*", async (req, res) => {
   try {
-    const stream = await layoutStorage.getAssetStream(req.params.roomId, req.params[0]);
-    res.type(path.extname(req.params[0]) || "png");
+    const assetPath = req.params[0];
+    const filePath = layoutStorage.resolveAssetPath(req.params.roomId, assetPath);
+    const stat = await fs.promises.stat(filePath);
+    res.type(path.extname(assetPath) || "png");
+    // Assets are replaceable in place (re-upload keeps the same URL), so always
+    // revalidate and send Last-Modified to allow conditional 304 responses.
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Last-Modified", stat.mtime.toUTCString());
+    if (req.headers["if-modified-since"]) {
+      const ifModified = new Date(req.headers["if-modified-since"]);
+      if (ifModified >= stat.mtime) return res.status(304).end();
+    }
+    const stream = await layoutStorage.getAssetStream(req.params.roomId, assetPath);
     stream.on("error", () => res.status(404).json({ error: "Asset not found" }));
     stream.pipe(res);
   } catch (e) {

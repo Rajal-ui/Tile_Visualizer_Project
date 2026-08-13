@@ -8,8 +8,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiClient,
-  clearAuthToken,
-  setAuthToken,
+  bumpAuthGeneration,
   AUTH_UNAUTHORIZED_EVENT,
 } from "@/lib/api-client.js";
 
@@ -39,8 +38,8 @@ export function AuthProvider({ children }) {
     [queryClient]
   );
 
-  // Global session handling: any 401 (from the apiClient interceptor) clears
-  // local token storage and resets the authenticated user.
+  // Global session handling: any 401 (from the apiClient interceptor) resets
+  // the authenticated user to unauthenticated.
   useEffect(() => {
     const onUnauthorized = () => setUser(null);
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
@@ -51,7 +50,9 @@ export function AuthProvider({ children }) {
     async (username, password) => {
       try {
         const data = await apiClient.post("/api/auth/login", { username, password });
-        if (data?.token) setAuthToken(data.token);
+        // Start a new authentication epoch so stale pre-login 401 responses
+        // are ignored by the global 401 handler.
+        bumpAuthGeneration();
         setUser(data?.user || null);
         return { ok: true };
       } catch (err) {
@@ -68,7 +69,6 @@ export function AuthProvider({ children }) {
     } catch {
       return { ok: false, message: "Failed to log out." };
     } finally {
-      clearAuthToken();
       setUser(null);
     }
   }, [setUser]);

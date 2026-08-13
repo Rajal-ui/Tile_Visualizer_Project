@@ -1,76 +1,87 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
-import { API_BASE } from "@/services/api-base.js";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  apiClient,
+  bumpAuthGeneration,
+  AUTH_UNAUTHORIZED_EVENT,
+} from "@/lib/api-client.js";
 
 const AuthContext = createContext(null);
 
+/** Query cache key holding the authenticated user (or null). */
+export const AUTH_QUERY_KEY = ["auth", "me"];
+
+async function fetchMe() {
+  const data = await apiClient.get("/api/auth/me");
+  return data?.user || null;
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const abortRef = useRef(null);
+  const meQuery = useQuery({
+    queryKey: AUTH_QUERY_KEY,
+    queryFn: fetchMe,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
+  const setUser = useCallback(
+    (user) => queryClient.setQueryData(AUTH_QUERY_KEY, user),
+    [queryClient]
+  );
+
+  // Global session handling: any 401 (from the apiClient interceptor) resets
+  // the authenticated user to unauthenticated.
   useEffect(() => {
-    abortRef.current = new AbortController();
-    fetch(`${API_BASE}/api/auth/me`, {
-      signal: abortRef.current.signal,
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.ok && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") setUser(null);
-      })
-      .finally(() => setLoading(false));
+    const onUnauthorized = () => setUser(null);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+  }, [setUser]);
 
-    return () => abortRef.current?.abort();
-  }, []);
-
-  const login = async (username, password) => {
-    abortRef.current?.abort();
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
-      const data = await res.json();
-
-      if (res.ok && data.user) {
-        setUser(data.user);
+  const login = useCallback(
+    async (username, password) => {
+      try {
+        const data = await apiClient.post("/api/auth/login", { username, password });
+        // Start a new authentication epoch so stale pre-login 401 responses
+        // are ignored by the global 401 handler.
+        bumpAuthGeneration();
+        setUser(data?.user || null);
         return { ok: true };
+      } catch (err) {
+        return { ok: false, message: err.message };
       }
+    },
+    [setUser]
+  );
 
-      return { ok: false, message: data.error || "Invalid credentials." };
-    } catch (err) {
-      return { ok: false, message: "Network error, please try again." };
-    }
-  };
-
-  const logout = async () => {
-    abortRef.current?.abort();
+  const logout = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) {
-        setUser(null);
-        return { ok: true };
-      }
+      await apiClient.post("/api/auth/logout");
+      return { ok: true };
+    } catch {
       return { ok: false, message: "Failed to log out." };
-    } catch (e) {
-      return { ok: false, message: "Network error on logout." };
+    } finally {
+      setUser(null);
     }
-  };
+  }, [setUser]);
 
-  const value = { user, login, logout, loading };
+  const value = useMemo(
+    () => ({
+      user: meQuery.data ?? null,
+      loading: meQuery.isLoading,
+      login,
+      logout,
+    }),
+    [meQuery.data, meQuery.isLoading, login, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

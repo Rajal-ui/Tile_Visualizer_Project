@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
 import Login from "@/features/auth/pages/Login.jsx";
 import ForgotPassword from "@/features/auth/pages/ForgotPassword.jsx";
@@ -9,17 +9,19 @@ function readResetToken() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get("token");
   const isResetPath = url.pathname.replace(/\/+$/, "").endsWith("/reset-password");
-  if (isResetPath && token) {
-    window.history.replaceState({}, "", url.pathname);
-    return token;
-  }
-  return null;
+  return isResetPath && token ? token : null;
 }
 
 export default function App() {
   const { user, loading } = useAuth();
   const [resetToken] = useState(readResetToken);
   const [view, setView] = useState(resetToken ? "reset-password" : "login");
+
+  useEffect(() => {
+    if (resetToken) {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [resetToken]);
 
   if (loading) {
     return (

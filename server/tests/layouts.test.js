@@ -7,6 +7,10 @@ import sharp from "sharp";
 import { LayoutStorage } from "../src/services/layout-storage.js";
 import { mock } from "node:test";
 import { Layout } from "../src/models/layout.js";
+import mongoose from "mongoose";
+
+// Mock mongoose connection so migration doesn't exit early in tests
+mongoose.connection.readyState = 1;
 
 mock.method(Layout, "findOne", (query) => {
   if (query.id === "kitchen-iridium" || query.id === "room-a") {
@@ -20,7 +24,10 @@ mock.method(Layout, "findOne", (query) => {
   }
   return Promise.resolve(null);
 });
-mock.method(Layout, "findOneAndUpdate", (query, update) => Promise.resolve({ ...update.$set, toJSON: () => update.$set }));
+mock.method(Layout, "findOneAndUpdate", (query, update) => {
+  const data = update.$set || update.$setOnInsert;
+  return Promise.resolve({ ...data, toJSON: () => data });
+});
 mock.method(Layout, "find", () => ({ lean: () => Promise.resolve([{ id: "kitchen-iridium", status: "draft", zones: [{}] }]) }));
 mock.method(Layout, "create", (doc) => Promise.resolve(doc));
 
@@ -54,6 +61,28 @@ test("create / read / list round-trip", async () => {
   assert.ok(found, "layout listed");
   assert.equal(found.status, "draft");
   assert.equal(found.zoneCount, 1);
+});
+
+test("concurrent migrations complete without failure", async () => {
+  const dir = await tmpDir();
+  // Create a dummy legacy layout
+  const roomDir = path.join(dir, "legacy-room");
+  await fs.mkdir(roomDir, { recursive: true });
+  await fs.writeFile(path.join(roomDir, "config.json"), JSON.stringify({
+    name: "Legacy", type: "photo", status: "draft", zones: []
+  }));
+
+  const storage1 = new LayoutStorage(dir);
+  const storage2 = new LayoutStorage(dir);
+  
+  // Start migrations concurrently across different instances (simulating processes)
+  await Promise.all([
+    storage1._migrateLegacyLayouts(),
+    storage2._migrateLegacyLayouts()
+  ]);
+
+  assert.equal(storage1._migrated, true);
+  assert.equal(storage2._migrated, true);
 });
 
 test("asset write/read and traversal guard", async () => {

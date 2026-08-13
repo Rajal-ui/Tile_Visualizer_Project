@@ -13,3 +13,7 @@ export const MAIL_FROM = process.env.MAIL_FROM || "";
 export const PASSWORD_RESET_TTL_MINUTES = Number(
   process.env.PASSWORD_RESET_TTL_MINUTES || 60
 );
+export const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
+export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
+export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
+export const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "test" ? "test_secret" : null);

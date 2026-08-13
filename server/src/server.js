@@ -1,5 +1,5 @@
+import { PORT, NODE_ENV, CLOUDINARY_CLOUD_NAME } from "./config/env.js";
 import app from "./app.js";
-import { PORT, NODE_ENV } from "./config/env.js";
 import { connectDb } from "./config/db.js";
 import { Admin, migrateAdminUsernames } from "./models/admin.js";
 
@@ -7,9 +7,14 @@ import { Admin, migrateAdminUsernames } from "./models/admin.js";
 // unset, so local dev keeps working on disk storage. Fails fast when a URI is
 // configured but unreachable.
 try {
-  await connectDb();
-  await migrateAdminUsernames();
-  await Admin.init();
+  const connection = await connectDb();
+  if (connection) {
+    await migrateAdminUsernames();
+    await Admin.init();
+  }
+  if (CLOUDINARY_CLOUD_NAME) {
+    console.log(`[cloudinary] CDN configured (cloud: ${CLOUDINARY_CLOUD_NAME})`);
+  }
 } catch (err) {
   console.error("[server] Startup failed:", err.message);
   process.exit(1);

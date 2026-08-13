@@ -185,7 +185,7 @@ test("forgot/reset request schemas validate bodies", () => {
 // Route integration tests (Register, Login, Me)
 // ---------------------------------------------------------------------------
 
-test("POST /api/auth/register creates an admin and returns JWT", async () => {
+test("POST /api/auth/register creates an admin without modifying session", async () => {
   const jwt = await import("jsonwebtoken");
   const token = jwt.default.sign({ id: "super-id" }, process.env.JWT_SECRET || "test_secret", { expiresIn: "1h" });
 
@@ -198,7 +198,7 @@ test("POST /api/auth/register creates an admin and returns JWT", async () => {
   assert.equal(res.status, 201);
   assert.equal(res.json.user.username, "newadmin");
   const cookies = res.headers.get("set-cookie");
-  assert.ok(cookies?.includes("jwt="), "sets jwt cookie");
+  assert.equal(cookies, null, "does not set jwt cookie");
 });
 
 test("POST /api/auth/login authenticates admin and returns JWT", async () => {

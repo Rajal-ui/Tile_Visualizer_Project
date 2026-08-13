@@ -17,7 +17,8 @@ import {
 } from "../services/password-reset.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
-import { requireAuth, JWT_SECRET } from "../middleware/requireAuth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { JWT_SECRET } from "../config/env.js";
 import { requireRole } from "../middleware/requireRole.js";
 
 const router = Router();
@@ -46,8 +47,7 @@ router.post("/register", requireAuth, requireRole("superadmin"), async (req, res
       role,
     });
 
-    const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    // No cookie assignment on register to preserve existing superadmin session
     
     res.status(201).json({ ok: true, user: admin.toJSON() });
   } catch (error) {
@@ -76,7 +76,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
     }
 
     const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" });
     
     res.json({ ok: true, user: admin.toJSON() });
   } catch (error) {

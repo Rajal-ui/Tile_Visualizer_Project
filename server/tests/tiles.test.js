@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mock } from "node:test";
 import jwt from "jsonwebtoken";
 import { Tile, CategoryTemplate, Admin } from "../src/models/index.js";
-import { JWT_SECRET } from "../src/middleware/requireAuth.js";
+import { JWT_SECRET } from "../src/config/env.js";
 
 const CAT_FLOOR = "c00000000000000000000001";
 const CAT_WALL = "c00000000000000000000002";

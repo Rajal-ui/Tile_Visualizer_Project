@@ -32,4 +32,7 @@ const tileSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// MongoDB $text index backing GET /api/v1/tiles/search.
+tileSchema.index({ title: "text", material: "text", finish: "text", size: "text" });
+
 export const Tile = mongoose.models.Tile || mongoose.model("Tile", tileSchema);

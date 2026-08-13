@@ -22,6 +22,52 @@ Health check used by monitoring and the root `npm run dev` flow.
 }
 ```
 
+## API versioning
+
+Routes are versioned under `/api/v1/`. The tile catalogue module was the first
+to adopt the versioned prefix; new modules should follow `/api/v1/<resource>`.
+The auth router remains mounted at `/api/auth` (pre-versioning) and will migrate
+to `/api/v1/auth` in a follow-up to avoid breaking existing consumers.
+
+### Tile catalogue management
+
+Routers are mounted in `server/src/app.js` (`/api/v1/tiles`).
+
+| Method | Path                    | Purpose                                        | Access     |
+| ------ | ----------------------- | ---------------------------------------------- | ---------- |
+| GET    | `/api/v1/tiles`         | List tiles with filters + pagination           | Public     |
+| GET    | `/api/v1/tiles/search`  | Full-text search (`q`) over title/material/finish/size | Public |
+| GET    | `/api/v1/tiles/:id`     | Tile detail                                    | Public     |
+| POST   | `/api/v1/tiles`         | Create tile                                    | Admin      |
+| PATCH  | `/api/v1/tiles/:id`     | Update tile (partial)                          | Admin      |
+| DELETE | `/api/v1/tiles/:id`     | Remove tile (returns 204)                      | Admin      |
+
+**List & search query params**
+
+| Param      | Type   | Notes                                            |
+| ---------- | ------ | ------------------------------------------------ |
+| `category` | string | MongoDB ObjectId of the `CategoryTemplate` ref   |
+| `room`     | string | Matches a value in the tile's `rooms` array      |
+| `size`     | string | Exact match on `size`                            |
+| `material` | string | Exact match on `material`                        |
+| `finish`   | string | Exact match on `finish`                          |
+| `q`        | string | Search term (`search` only, required)            |
+| `page`     | number | 1-based page (default `1`)                       |
+| `limit`    | number | Items per page (default `20`, max `100`)         |
+
+**List / search response shape**
+
+```json
+{
+  "data": [ { "title": "Iridium Aruba Armani", "category": "…", "material": "Porcelain", "finish": "Matt", "size": "600x600mm", "rooms": ["kitchen", "living-room", "bathroom"], "price": 1800 } ],
+  "pagination": { "page": 1, "limit": 20, "totalPages": 1, "totalItems": 4 }
+}
+```
+
+**Create / update body** is validated against `shared/schemas/tile.schema.js`.
+A missing `title`/`category`, a malformed `category`, or an unknown category
+reference returns `400` with `{ "error": "…" }`.
+
 ## Planned endpoints
 
 Expected future modules from the PRD (`docs/prd.md`). These are placeholders for
@@ -34,16 +80,6 @@ the backend integration phase — none are implemented yet.
 | POST   | `/api/auth/login` | Exchange credentials for a token |
 | POST   | `/api/auth/logout` | Invalidate the session       |
 | GET    | `/api/auth/me`    | Current admin session/user     |
-
-### Tile catalogue management
-
-| Method | Path             | Purpose                     |
-| ------ | ---------------- | --------------------------- |
-| GET    | `/api/tiles`     | List/search/filter tiles    |
-| GET    | `/api/tiles/:id` | Tile detail                 |
-| POST   | `/api/tiles`     | Create tile (admin)         |
-| PATCH  | `/api/tiles/:id` | Update tile (admin)         |
-| DELETE | `/api/tiles/:id` | Remove tile (admin)         |
 
 ### Photo layout persistence (2-layer model)
 

@@ -1,15 +1,98 @@
+import { useEffect, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
+import { useRooms } from "@/features/rooms/hooks/useRooms.js";
+import { useCategories } from "@/features/rooms/hooks/useCategories.js";
+import { rooms as staticRooms } from "@/features/rooms/data/rooms.jsx";
+import { normalizeRoom, roomIdsFromCategories } from "@/features/rooms/lib/room-adapter.js";
+
+const SKELETON_COUNT = 6;
+
+function RoomsLabel() {
+  return (
+    <div className="hidden items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 lg:flex">
+      <MapPin size={14} />
+      Rooms
+    </div>
+  );
+}
+
+function RoomButtonSkeleton() {
+  return <div className="h-9 w-32 shrink-0 animate-pulse rounded-xl bg-slate-200" />;
+}
 
 export default function RoomSelector() {
-  const { rooms, roomId, setRoom } = useWorkspace();
+  const { roomId, setRoom } = useWorkspace();
+  const {
+    data: roomsData,
+    isLoading: roomsLoading,
+    isSuccess: roomsSuccess,
+    isError: roomsError,
+    error: roomsErrorObj,
+  } = useRooms();
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    isSuccess: categoriesSuccess,
+  } = useCategories();
+
+  // Resolve the room list:
+  //   1. Backend rooms are the source of truth — trusted even when empty.
+  //   2. When the rooms API is unavailable, derive rooms from the category
+  //      templates (each template belongs to a room). Every referenced id is
+  //      preserved via normalizeRoom({ id }) so backend-created rooms that have
+  //      no static template yet still render, and an empty derived result is
+  //      respected instead of being masked by the seed.
+  //   3. The static seed is the last resort, used only when both sources
+  //      errored, so offline previews keep working.
+  const rooms = useMemo(() => {
+    if (roomsSuccess) return roomsData || [];
+
+    if (categoriesSuccess) {
+      return roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
+    }
+
+    return staticRooms;
+  }, [roomsData, roomsSuccess, categoriesData, categoriesSuccess]);
+
+  useEffect(() => {
+    if (roomsError) {
+      console.warn(
+        "[RoomSelector] Rooms API unavailable, using fallback rooms:",
+        roomsErrorObj?.message || roomsErrorObj
+      );
+    }
+  }, [roomsError, roomsErrorObj]);
+
+  // Wait for the primary fetch, and for the category fallback whenever the
+  // rooms API errored, before committing to a room list.
+  const waiting = roomsLoading || (roomsError && categoriesLoading);
+
+  if (waiting) {
+    return (
+      <div className="flex items-center gap-3">
+        <RoomsLabel />
+        <div className="tile-scrollbar flex gap-2 overflow-x-auto pb-1">
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <RoomButtonSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!rooms.length) {
+    return (
+      <div className="flex items-center gap-3">
+        <RoomsLabel />
+        <p className="text-xs font-medium text-slate-500">No rooms available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3">
-      <div className="hidden items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 lg:flex">
-        <MapPin size={14} />
-        Rooms
-      </div>
+      <RoomsLabel />
       <div className="tile-scrollbar flex gap-2 overflow-x-auto pb-1">
         {rooms.map((room) => {
           const Icon = room.icon;

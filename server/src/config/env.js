@@ -1,9 +1,14 @@
 import dotenv from "dotenv";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+const serverRoot = path.resolve(__dirname, "../..");
+const envPath = path.resolve(serverRoot, ".env");
+const envExamplePath = path.resolve(serverRoot, ".env.example");
+if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
+else if (fs.existsSync(envExamplePath)) dotenv.config({ path: envExamplePath });
 
 export const PORT = Number(process.env.PORT || 4000);
 export const NODE_ENV = process.env.NODE_ENV || "development";

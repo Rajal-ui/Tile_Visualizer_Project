@@ -24,40 +24,51 @@ function RoomButtonSkeleton() {
 export default function RoomSelector() {
   const { roomId, setRoom } = useWorkspace();
   const {
-    data: apiRooms,
+    data: roomsData,
     isLoading: roomsLoading,
+    isSuccess: roomsSuccess,
     isError: roomsError,
     error: roomsErrorObj,
   } = useRooms();
-  const { data: apiCategories, isLoading: categoriesLoading } = useCategories();
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    isSuccess: categoriesSuccess,
+  } = useCategories();
 
-  // Resolve the room list: prefer the backend rooms; derive from category
-  // templates when the rooms endpoint is empty; otherwise fall back to the
-  // static seed so offline previews keep working.
+  // Resolve the room list:
+  //   1. Backend rooms are the source of truth — trusted even when empty.
+  //   2. When the rooms API is unavailable, derive rooms from the category
+  //      templates (each template belongs to a room). Every referenced id is
+  //      preserved via normalizeRoom({ id }) so backend-created rooms that have
+  //      no static template yet still render, and an empty derived result is
+  //      respected instead of being masked by the seed.
+  //   3. The static seed is the last resort, used only when both sources
+  //      errored, so offline previews keep working.
   const rooms = useMemo(() => {
-    if (apiRooms?.length) return apiRooms;
+    if (roomsSuccess) return roomsData || [];
 
-    if (!categoriesLoading) {
-      const derived = roomIdsFromCategories(apiCategories)
-        .map((id) => staticRooms.find((r) => r.id === id))
-        .filter(Boolean)
-        .map(normalizeRoom);
-      if (derived.length) return derived;
+    if (categoriesSuccess) {
+      return roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
     }
 
     return staticRooms;
-  }, [apiRooms, apiCategories, categoriesLoading]);
+  }, [roomsData, roomsSuccess, categoriesData, categoriesSuccess]);
 
   useEffect(() => {
     if (roomsError) {
       console.warn(
-        "[RoomSelector] Rooms API unavailable, using static fallback:",
+        "[RoomSelector] Rooms API unavailable, using fallback rooms:",
         roomsErrorObj?.message || roomsErrorObj
       );
     }
   }, [roomsError, roomsErrorObj]);
 
-  if (roomsLoading && !apiRooms?.length) {
+  // Wait for the primary fetch, and for the category fallback whenever the
+  // rooms API errored, before committing to a room list.
+  const waiting = roomsLoading || (roomsError && categoriesLoading);
+
+  if (waiting) {
     return (
       <div className="flex items-center gap-3">
         <RoomsLabel />

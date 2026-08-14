@@ -3,3 +3,4 @@ export { CategoryTemplate } from "./category-template.js";
 export { Tile } from "./tile.js";
 export { Project } from "./project.js";
 export { Layout } from "./layout.js";
+export { Room } from "./room.js";

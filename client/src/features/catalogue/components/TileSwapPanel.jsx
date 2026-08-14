@@ -1,15 +1,21 @@
 import { useMemo, useState } from "react";
 import { X, ChevronRight, Grid3X3 } from "lucide-react";
-import { tilesForRoom } from "@/features/catalogue/data/tiles.js";
 import { useWorkspace } from "@/store/workspace.context.jsx";
+import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
+import { isTileCompatibleWithSurface } from "@/features/catalogue/lib/tile-adapter.js";
 import { textureThumbnailUrl, textureUrl } from "@/lib/textures.js";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileSwapPanel({ onOpenCatalogue }) {
   const { room, surfaces, surface, setSurface, activeTile, applyTile, removeTile } = useWorkspace();
+  const { tiles: catalogueTiles } = useTiles();
   const [detail, setDetail] = useState(null);
 
-  const roomTiles = useMemo(() => tilesForRoom(room.id), [room.id]);
+  const roomTiles = useMemo(() => {
+    return catalogueTiles.filter(
+      (t) => t.rooms.includes(room.id) && isTileCompatibleWithSurface(t, surface)
+    );
+  }, [catalogueTiles, room.id, surface]);
 
   const surfaceTabs = surfaces.map((s) => ({ key: s, label: s.toUpperCase() }));
 
@@ -51,8 +57,7 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-slate-800">{activeTile.name}</p>
               <p className="text-[10px] text-slate-400">
-                {activeTile.id.replace("tile-", "").replace(/-/g, " ").toUpperCase()} ·{" "}
-                {activeTile.finish}
+                {activeTile.sku || activeTile.category} · {activeTile.finish}
               </p>
             </div>
             <button

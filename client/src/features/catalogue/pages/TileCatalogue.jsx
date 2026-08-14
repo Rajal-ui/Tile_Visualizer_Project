@@ -1,17 +1,29 @@
 import { useMemo, useState } from "react";
 import { Search, Grid3X3 } from "lucide-react";
-import { tiles, categories, finishes, materials } from "@/features/catalogue/data/tiles.js";
 import { useWorkspace } from "@/store/workspace.context.jsx";
+import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
 import TileCard from "@/features/catalogue/components/TileCard.jsx";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileCatalogue() {
   const { surface, applyTile } = useWorkspace();
+  const { tiles } = useTiles();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [finish, setFinish] = useState("All Finishes");
   const [material, setMaterial] = useState("All Materials");
   const [detail, setDetail] = useState(null);
+
+  const { categories, finishes, materials } = useMemo(() => {
+    const cats = [...new Set(tiles.map((t) => t.category))].sort();
+    const fin = [...new Set(tiles.map((t) => t.finish))].sort();
+    const mat = [...new Set(tiles.map((t) => t.material))].sort();
+    return {
+      categories: ["all", ...cats],
+      finishes: ["All Finishes", ...fin],
+      materials: ["All Materials", ...mat],
+    };
+  }, [tiles]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -23,7 +35,7 @@ export default function TileCatalogue() {
         return false;
       return true;
     });
-  }, [query, category, finish, material]);
+  }, [tiles, query, category, finish, material]);
 
   const displayed = filtered;
 
@@ -51,19 +63,19 @@ export default function TileCatalogue() {
       </div>
 
       <div className="tile-scrollbar -mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-0.5">
-        {categories.map((c) => {
-          const active = category === c.id;
+        {categories.map((cat) => {
+          const active = category === cat;
           return (
             <button
-              key={c.id}
-              onClick={() => setCategory(c.id)}
+              key={cat}
+              onClick={() => setCategory(cat)}
               className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${
                 active
                   ? "bg-brand-600 text-white shadow-card"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {c.label}
+              {cat === "all" ? "All" : cat}
             </button>
           );
         })}

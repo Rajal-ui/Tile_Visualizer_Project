@@ -5,6 +5,7 @@ const layoutSchema = new mongoose.Schema(
     id: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     type: { type: String, default: "photo" },
+    roomId: { type: String, default: null, index: true },
     status: { type: String, default: "draft" },
     background: { type: String, default: null },
     foreground: { type: String, default: null },

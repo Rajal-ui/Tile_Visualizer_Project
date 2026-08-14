@@ -19,13 +19,26 @@ const upload = multer({
   },
 });
 
+/**
+ * POST /api/uploads — upload an image to Cloudinary.
+ *
+ * Body fields:
+ *   image   — the file (multipart, "image" field).
+ *   folder  — optional Cloudinary folder, e.g. "rooms/{roomId}/background",
+ *             "rooms/{roomId}/foreground", "rooms/{roomId}/masks".
+ *             Defaults to "tile-visualizer/tiles".
+ */
 router.post("/", requireAuth, requireRole("admin"), upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No image file provided" });
     }
 
-    const result = await cloudinaryService.uploadTileImage(req.file.buffer, req.file.originalname);
+    const folder = typeof req.body.folder === "string" ? req.body.folder.trim() : undefined;
+
+    const result = folder
+      ? await cloudinaryService.uploadImage(req.file.buffer, req.file.originalname, { folder })
+      : await cloudinaryService.uploadTileImage(req.file.buffer, req.file.originalname);
     res.json(result);
   } catch (e) {
     console.error("Upload error:", e);

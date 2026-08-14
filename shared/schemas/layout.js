@@ -87,6 +87,7 @@ export function createZone({ id, label, planes = [] }) {
  * @param {string} opts.id
  * @param {string} opts.name
  * @param {string} [opts.type="photo"]   "photo" | "svg-scene"
+ * @param {string|null} [opts.roomId]    FK to the Room entity, if any.
  * @param {string|null} [opts.background] Furniture-removed clean photo URL.
  * @param {string|null} [opts.foreground] Furniture-only, transparent elsewhere URL.
  * @param {Array}  [opts.zones=[]]
@@ -96,12 +97,13 @@ export function createRoom({
   id,
   name,
   type = "photo",
+  roomId = null,
   background = null,
   foreground = null,
   zones = [],
   status = STATUS_DRAFT,
 }) {
-  return { id, name, type, background, foreground, zones, status };
+  return { id, name, type, roomId, background, foreground, zones, status };
 }
 
 /**
@@ -121,6 +123,7 @@ export function validateLayout(room) {
   if (!room.name || typeof room.name !== "string") errors.push("room.name must be a non-empty string");
   if (!ROOM_TYPES.includes(room.type)) errors.push(`room.type must be one of: ${ROOM_TYPES.join(", ")}`);
   if (!LAYOUT_STATUSES.includes(room.status)) errors.push(`room.status must be one of: ${LAYOUT_STATUSES.join(", ")}`);
+  if (room.roomId != null && typeof room.roomId !== "string") errors.push("room.roomId must be a string or null");
   if (room.background != null && typeof room.background !== "string") errors.push("room.background must be a string URL or null");
   if (room.foreground != null && typeof room.foreground !== "string") errors.push("room.foreground must be a string URL or null");
 

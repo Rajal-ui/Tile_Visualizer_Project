@@ -9,6 +9,9 @@ export const TilePropertiesSchema = z.object({
   application: z.string().optional(),
 });
 
+/** Supported tileable surfaces (zone compatibility). */
+export const COMPATIBLE_ZONES = ["floor", "wall", "counter"];
+
 /** Texture descriptor carried over from the static catalogue data. */
 export const TileTextureSchema = z.object({
   kind: z.string().default("image"),
@@ -28,6 +31,9 @@ export const TileSchema = z.object({
   pattern: z.string().optional(),
   grout: z.string().optional(),
   price: z.number().nonnegative().optional(),
+  sku: z.string().optional(),
+  colorTag: z.string().optional(),
+  compatibleZones: z.array(z.enum(COMPATIBLE_ZONES)).default([]),
   rooms: z.array(z.string()).optional(),
   colors: z.array(z.string()).optional(),
   texture: TileTextureSchema.optional(),

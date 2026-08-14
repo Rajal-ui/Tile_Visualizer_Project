@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getTile } from "@/features/catalogue/data/tiles.js";
+import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
 import { getRoom, rooms } from "@/features/rooms/data/rooms.jsx";
 import { useLayout } from "@/features/rooms/hooks/useLayout.js";
 
@@ -15,6 +16,8 @@ const defaults = {
 
 export function WorkspaceProvider({ children }) {
   const [prefs, setPrefs] = useState(defaults);
+
+  const { tiles: catalogueTiles } = useTiles();
 
   const room = useMemo(() => {
     return rooms.find((x) => x.id === prefs.roomId) || rooms[0];
@@ -56,10 +59,11 @@ export function WorkspaceProvider({ children }) {
   const appliedTiles = useMemo(() => {
     const map = {};
     for (const key of Object.keys(prefs.applied)) {
-      map[key] = getTile(prefs.applied[key]);
+      map[key] =
+        catalogueTiles.find((t) => t.id === prefs.applied[key]) || getTile(prefs.applied[key]);
     }
     return map;
-  }, [prefs.applied]);
+  }, [prefs.applied, catalogueTiles]);
 
   const activeTile = appliedTiles[prefs.surface] || null;
 

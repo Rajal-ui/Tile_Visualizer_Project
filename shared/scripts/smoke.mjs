@@ -22,10 +22,10 @@ import { validateLayout, createRoom } from "../schemas/layout.js";
 const OID = "0123456789abcdef01234567";
 
 const samples = [
-  ["AdminSchema", AdminSchema, { name: "Admin", email: "admin@example.com", password: "password123", role: "superadmin" }],
-  ["AdminLoginSchema", AdminLoginSchema, { email: "admin@example.com", password: "password123" }],
+  ["AdminSchema", AdminSchema, { username: "admin", name: "Admin", email: "admin@example.com", password: "password123", role: "superadmin" }],
+  ["AdminLoginSchema", AdminLoginSchema, { username: "admin", password: "password123" }],
   ["CategoryTemplateSchema", CategoryTemplateSchema, { name: "Kitchen Floor", room: "kitchen", type: "floor" }],
-  ["TileSchema", TileSchema, { title: "Iridium Aruba Armani", category: OID, size: "600x600mm", properties: {} }],
+  ["TileSchema", TileSchema, { title: "Iridium Aruba Armani", category: OID, size: "600x600mm", properties: {}, compatibleZones: ["floor", "wall"] }],
   ["ProjectSchema", ProjectSchema, { name: "Demo", adminId: OID, appliedTiles: { Floor: OID } }],
   ["MongoObjectId", MongoObjectId, OID],
 ];

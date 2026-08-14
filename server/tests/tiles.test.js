@@ -109,6 +109,9 @@ test.before(() => {
         this._limit = n;
         return this;
       },
+      populate() {
+        return this;
+      },
       lean() {
         const start = this._skip || 0;
         const end = start + (this._limit ?? results.length);
@@ -123,7 +126,7 @@ test.before(() => {
 
   mock.method(Tile, "findById", (id) => {
     const tile = tileStore.find((t) => t._id === id) || null;
-    return { lean: () => Promise.resolve(tile) };
+    return { populate: () => ({ lean: () => Promise.resolve(tile) }) };
   });
 
   mock.method(Tile, "create", (doc) => {

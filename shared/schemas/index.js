@@ -10,10 +10,12 @@ export { z } from "zod";
 export { MONGO_ID_PATTERN, MongoObjectId } from "./id.schema.js";
 export { ADMIN_ROLES, AdminSchema, AdminLoginSchema, ForgotPasswordSchema, ResetPasswordSchema } from "./auth.schema.js";
 export { ROOM_IDS, TEMPLATE_TYPES, CategoryTemplateSchema } from "./template.schema.js";
+export { RoomSchema } from "./room.schema.js";
 export {
   TileSchema,
   TilePropertiesSchema,
   TileTextureSchema,
+  COMPATIBLE_ZONES,
 } from "./tile.schema.js";
 export { ProjectSchema, AppliedTilesSchema } from "./project.schema.js";
 

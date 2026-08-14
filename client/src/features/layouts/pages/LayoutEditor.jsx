@@ -95,7 +95,7 @@ function drawHandles(ctx, pts, color) {
   });
 }
 
-export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) {
+export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose, embedded = false }) {
   const [layout, setLayout] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -434,7 +434,7 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) 
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex h-full w-full items-center justify-center bg-slate-950 text-slate-400">
         Loading layout…
       </div>
     );
@@ -442,7 +442,7 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) 
 
   if (!layout) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-slate-950 text-slate-300">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-950 text-slate-300">
         <p>Layout not found: {layoutId}</p>
         <button
           onClick={onClose}
@@ -457,16 +457,18 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose }) 
   const planeCount = activeZone?.planes?.length || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-full w-full min-h-0 flex-col bg-slate-950 text-slate-100">
       {/* Header */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/80 px-5 py-3">
         <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700"
-          >
-            <ArrowLeft size={14} /> Back
-          </button>
+          {!embedded && (
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-700"
+            >
+              <ArrowLeft size={14} /> Back
+            </button>
+          )}
           <div>
             <h1 className="text-sm font-bold text-white">{layout.name} — Zone Editor</h1>
             <p className="text-[10px] text-slate-400">

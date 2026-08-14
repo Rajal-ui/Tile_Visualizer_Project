@@ -23,6 +23,9 @@ const tileSchema = new mongoose.Schema(
     pattern: { type: String },
     grout: { type: String },
     price: { type: Number },
+    sku: { type: String, trim: true },
+    colorTag: { type: String },
+    compatibleZones: { type: [String], enum: ["floor", "wall", "counter"], default: [] },
     rooms: { type: [String], default: [] },
     colors: { type: [String], default: [] },
     texture: {

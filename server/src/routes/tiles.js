@@ -4,6 +4,7 @@ import { Tile, CategoryTemplate } from "../models/index.js";
 import { TileSchema, validate } from "@tile-visualizer/shared/schemas/index.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { esService } from "../services/elasticsearch.js";
 
 const router = Router();
 
@@ -73,7 +74,7 @@ router.get("/", async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [tiles, totalItems] = await Promise.all([
-      Tile.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Tile.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate("category", "name").lean(),
       Tile.countDocuments(filter),
     ]);
 
@@ -88,8 +89,10 @@ router.get("/", async (req, res) => {
 });
 
 /**
- * GET /api/v1/tiles/search — public full-text search across title, material,
- * finish and size (backed by the Tile $text index).
+ * GET /api/v1/tiles/search — full-text search across title, material, finish
+ * and size. Routes through Elasticsearch when `ELASTICSEARCH_NODE` is set
+ * (zone-aware via `compatibleZones`), otherwise falls back to the Mongo `$text`
+ * index.
  */
 router.get("/search", async (req, res) => {
   try {
@@ -100,10 +103,34 @@ router.get("/search", async (req, res) => {
 
     const { page, limit } = parsePagination(req.query);
     const skip = (page - 1) * limit;
+    const { category, compatibleZone } = req.query;
+
+    // Elasticsearch path (zone-aware).
+    if (esService.isConfigured()) {
+      const result = await esService.searchTiles({
+        q,
+        category: typeof category === "string" ? category : undefined,
+        compatibleZones: typeof compatibleZone === "string" ? [compatibleZone] : undefined,
+        from: skip,
+        size: limit,
+      });
+      if (result) {
+        return sendList(res, result.tiles, result.totalItems, page, limit);
+      }
+    }
+
+    // MongoDB $text fallback.
     const filter = { $text: { $search: q } };
+    if (category) filter.category = category;
+    if (compatibleZone) filter.compatibleZones = compatibleZone;
 
     const [tiles, totalItems] = await Promise.all([
-      Tile.find(filter).sort({ score: { $meta: "textScore" } }).skip(skip).limit(limit).lean(),
+      Tile.find(filter)
+        .sort({ score: { $meta: "textScore" } })
+        .skip(skip)
+        .limit(limit)
+        .populate("category", "name")
+        .lean(),
       Tile.countDocuments(filter),
     ]);
 
@@ -123,7 +150,7 @@ router.get("/:id", async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(404).json({ error: "Tile not found" });
     }
-    const tile = await Tile.findById(req.params.id).lean();
+    const tile = await Tile.findById(req.params.id).populate("category", "name").lean();
     if (!tile) {
       return res.status(404).json({ error: "Tile not found" });
     }
@@ -154,6 +181,7 @@ router.post("/", adminOnly, async (req, res) => {
   try {
     if (!(await assertCategoryExists(res, check.data.category))) return;
     const tile = await Tile.create(check.data);
+    indexTileBestEffort(tile);
     res.status(201).json({ data: tile });
   } catch (err) {
     console.error("create tile error:", err.message);
@@ -180,6 +208,7 @@ router.patch("/:id", adminOnly, async (req, res) => {
     if (!tile) {
       return res.status(404).json({ error: "Tile not found" });
     }
+    indexTileBestEffort(tile);
     res.json({ data: tile });
   } catch (err) {
     console.error("update tile error:", err.message);
@@ -197,11 +226,24 @@ router.delete("/:id", adminOnly, async (req, res) => {
     if (!tile) {
       return res.status(404).json({ error: "Tile not found" });
     }
+    esService.removeTile(tile._id).catch(() => {});
     res.status(204).end();
   } catch (err) {
     console.error("delete tile error:", err.message);
     res.status(500).json({ error: "Failed to delete tile" });
   }
 });
+
+/** Best-effort ES indexing hook (no-op / silent when ES is unconfigured). */
+async function indexTileBestEffort(tile) {
+  if (!esService.isConfigured()) return;
+  try {
+    const doc = tile?.toObject?.() ?? tile;
+    const cat = doc.category ? await CategoryTemplate.findById(doc.category).lean() : null;
+    await esService.indexTile({ ...doc, categoryName: cat?.name });
+  } catch (e) {
+    console.error("ES index error:", e.message);
+  }
+}
 
 export default router;

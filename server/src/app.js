@@ -4,6 +4,7 @@ import healthRouter from "./routes/health.js";
 import layoutsRouter from "./routes/layouts.js";
 import authRouter from "./routes/auth.js";
 import tilesRouter from "./routes/tiles.js";
+import categoriesRouter from "./routes/categories.js";
 import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
@@ -19,6 +20,7 @@ app.use("/health", healthRouter);
 app.use("/api/layouts", layoutsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/v1/tiles", tilesRouter);
+app.use("/api/v1/categories", categoriesRouter);
 app.use("/api/uploads", uploadsRouter);
 
 export default app;

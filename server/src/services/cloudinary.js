@@ -24,23 +24,31 @@ if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
 
 export const cloudinaryService = {
   /**
-   * Uploads a tile image to Cloudinary and generates a thumbnail via eager transformations.
-   * 
+   * Uploads an image to Cloudinary and generates a thumbnail via eager transformations.
+   *
    * @param {Buffer} buffer - The image buffer to upload.
    * @param {string} originalFilename - The original filename.
+   * @param {Object} [opts]
+   * @param {string} [opts.folder] - Cloudinary folder path, e.g. "tiles/{tileId}",
+   *   "rooms/{roomId}/background", "rooms/{roomId}/foreground", "rooms/{roomId}/masks".
+   * @param {string} [opts.publicId] - Optional explicit public id inside the folder.
    * @returns {Promise<{url: string, thumbnailUrl: string, publicId: string}>}
    */
-  uploadTileImage: async function(buffer, originalFilename) {
+  uploadImage: async function(buffer, originalFilename, opts = {}) {
     ensureConfigured();
 
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: "tile-visualizer/tiles",
-        // Eagerly transform to a small, optimized WebP thumbnail
-        eager: [{ width: 300, height: 300, crop: "fill", format: "webp", quality: 70 }],
-      },
-      (error, result) => {
+    const folder = opts.folder || "tile-visualizer/tiles";
+    const eager = opts.thumbnail
+      ? [{ width: 300, height: 300, crop: "fill", format: "webp", quality: 70 }]
+      : [];
+
+    return new Promise((resolve, reject) => {
+      const options = { folder, eager };
+      if (opts.publicId) options.public_id = opts.publicId;
+      // No eager transform on room assets (they must stay full-resolution for
+      // the canvas compositor) — a transform would also break the mask mapping.
+
+      const uploadStream = cloudinary.uploader.upload_stream(options, (error, result) => {
         if (error) {
           return reject(new Error(`Cloudinary upload failed: ${error.message}`));
         }
@@ -50,11 +58,24 @@ export const cloudinaryService = {
           thumbnailUrl: result.eager?.[0]?.secure_url || result.secure_url,
           publicId: result.public_id,
         });
-      }
-    );
+      });
 
-    uploadStream.end(buffer);
-  });
+      uploadStream.end(buffer);
+    });
+  },
+
+  /**
+   * Uploads a tile image to Cloudinary and generates a thumbnail via eager transformations.
+   *
+   * @param {Buffer} buffer - The image buffer to upload.
+   * @param {string} originalFilename - The original filename.
+   * @returns {Promise<{url: string, thumbnailUrl: string, publicId: string}>}
+   */
+  uploadTileImage: async function(buffer, originalFilename) {
+    return this.uploadImage(buffer, originalFilename, {
+      folder: "tile-visualizer/tiles",
+      thumbnail: true,
+    });
   },
 
   /**

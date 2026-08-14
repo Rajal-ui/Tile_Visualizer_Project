@@ -20,8 +20,24 @@ try {
   process.exit(1);
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(
     `[server] Tile Visualizer API listening on http://localhost:${PORT} (${NODE_ENV})`
   );
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `[server] Port ${PORT} is already in use. Stop the other instance (e.g. a stale "npm run dev" or "node src/server.js") or set a different PORT in server/.env.`
+    );
+  } else {
+    console.error(`[server] Server error:`, err);
+  }
+  process.exit(1);
+});
+
+process.on("SIGTERM", () => {
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1000).unref();
 });

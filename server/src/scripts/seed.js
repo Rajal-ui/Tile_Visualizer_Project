@@ -200,7 +200,7 @@ async function seed() {
   await Tile.create(tileDocs);
 
   console.log(
-    `[seed] Done. Admin: ${admin.email} | rooms: ${createdRooms.length} | templates: ${createdTemplates.length} | tiles: ${tileDocs.length}`
+    `[seed] Done. Admin created | rooms: ${createdRooms.length} | templates: ${createdTemplates.length} | tiles: ${tileDocs.length}`
   );
   await disconnectDb();
 }

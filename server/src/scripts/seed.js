@@ -12,13 +12,14 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { connectDb, disconnectDb } from "../config/db.js";
-import { Admin, CategoryTemplate, Tile, Project } from "../models/index.js";
+import { Admin, CategoryTemplate, Tile, Project, Room } from "../models/index.js";
 import {
   ROOM_IDS,
   TEMPLATE_TYPES,
   AdminSchema,
   CategoryTemplateSchema,
   TileSchema,
+  RoomSchema,
   validate,
 } from "@tile-visualizer/shared/schemas/index.js";
 
@@ -32,6 +33,16 @@ if (process.env.NODE_ENV === "production") {
 const ADMIN_USERNAME = process.env.ADMIN_SEED_USERNAME || "admin";
 const ADMIN_EMAIL = process.env.ADMIN_SEED_EMAIL || "admin@example.com";
 const ADMIN_PASSWORD = process.env.ADMIN_SEED_PASSWORD || "admin123";
+
+/** Mirror of client/src/features/rooms/data/rooms.jsx (display info only). */
+const ROOM_SEED = [
+  { id: "living-room", name: "Living Room", description: "Relaxed & social spaces" },
+  { id: "bedroom", name: "Bedroom", description: "Calm & restful retreats" },
+  { id: "kitchen", name: "Kitchen", description: "Functional & fresh workspaces" },
+  { id: "bathroom", name: "Bathroom", description: "Clean & spa-like details" },
+  { id: "staircase", name: "Staircase", description: "Statements that ascend" },
+  { id: "facade", name: "Exterior", description: "Facades & outdoor faces" },
+];
 
 /** Mirror of client/src/features/catalogue/data/tiles.js. */
 const TILE_SEED = [
@@ -140,6 +151,7 @@ async function seed() {
     CategoryTemplate.deleteMany({}),
     Tile.deleteMany({}),
     Project.deleteMany({}),
+    Room.deleteMany({}),
   ]);
 
   // 1. Admin
@@ -151,7 +163,14 @@ async function seed() {
     password: await bcrypt.hash(ADMIN_PASSWORD, 10),
   });
 
-  // 2. Category templates (room × type)
+  // 2. Rooms (display metadata for the Rep-facing room selector)
+  for (const doc of ROOM_SEED) {
+    const check = validate(RoomSchema, doc);
+    if (!check.ok) throw new Error(`Room "${doc.id}" invalid: ${check.errors.join("; ")}`);
+  }
+  const createdRooms = await Room.create(ROOM_SEED);
+
+  // 3. Category templates (room × type)
   const templates = [];
   for (const room of ROOM_IDS) {
     for (const type of TEMPLATE_TYPES) {
@@ -181,7 +200,7 @@ async function seed() {
   await Tile.create(tileDocs);
 
   console.log(
-    `[seed] Done. Admin: ${admin.email} | templates: ${createdTemplates.length} | tiles: ${tileDocs.length}`
+    `[seed] Done. Admin: ${admin.email} | rooms: ${createdRooms.length} | templates: ${createdTemplates.length} | tiles: ${tileDocs.length}`
   );
   await disconnectDb();
 }

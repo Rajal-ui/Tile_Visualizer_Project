@@ -29,7 +29,7 @@ tile-visualizer/
 │   ├── public/
 │   │   ├── assets/
 │   │   │   ├── rooms/<id>/     # CSS rooms: bg.jpg + fg.png; kitchen: background.png + foreground.png
-│   │   │   └── tile-textures/  # IRIDIUM/ — 6 tile texture PNGs
+│   │   │   └── tile-textures/  # legacy local IRIDIUM PNGs (migrated to Cloudinary tile-visualizer/tiles)
 │   │   └── favicon.svg
 │   ├── src/
 │   │   ├── app/                # App shell, providers

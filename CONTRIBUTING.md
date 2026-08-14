@@ -196,7 +196,7 @@ tile-visualizer/
 |   |   |   +-- rooms/<id>/             # bg.jpg + fg.png per CSS room
 |   |   |   |   +-- kitchen/            # background.png + foreground.png (photo layout)
 |   |   |   |   +-- living-room/ bedroom/ bathroom/ staircase/ facade/
-|   |   |   +-- tile-textures/IRIDIUM/  # 6 tile texture PNGs (Iridium series)
+|   |   |   +-- tile-textures/IRIDIUM/  # legacy local copies (migrated to Cloudinary via npm run migrate:kitchen-assets)
 |   |   +-- favicon.svg
 |   +-- src/
 |   |   +-- app/                        # App shell + providers (App.jsx, providers.jsx)
@@ -312,7 +312,7 @@ The `floor` object in each room entry controls CSS projection: `perspective` (px
 
 Two sources feed the catalogue:
 
-1. **Static PNGs** — `client/public/assets/tile-textures/IRIDIUM/*.png` (6 textures: Aruba Armani, Belgium Rossata, Dubbo Beige, Friesland Silk, Kamplay Ivory, Thorn White). Referenced from `tile.texture = { kind: "image", src: "/assets/tile-textures/IRIDIUM/<name>.png" }` in `client/src/features/catalogue/data/tiles.js`.
+1. **Cloudinary CDN images** — the IRIDIUM textures are served from Cloudinary under the `tile-visualizer/tiles` folder (the same folder used by the admin `POST /api/uploads` flow). Referenced as `tile.texture = { kind: "image", src: "<cloudinary-secure-url>" }` in `client/src/features/catalogue/data/tiles.js` and mirrored in the `TILE_SEED` in `server/src/scripts/seed.js`. The one-off `npm run migrate:kitchen-assets` script uploads the legacy local PNGs (under `client/public/assets/` → `tile-textures/`) and rewrites any remaining local references to the returned secure URLs.
 
 2. **Procedural SVG textures** — `client/src/lib/textures.js` generates tile textures as `data:image/svg+xml` URIs with a seeded PRNG so rendering is deterministic. Supported `kind`s: `marble`, `granite`, `terrazzo`, `wood`, `concrete`, `slate`, `solid` (default). Each generator applies fractal noise, a vignette, and an optional glossy sheen. Set `t.texture = { kind: "marble", base, veins, glossy }` to use one; `t.kind === "image"` short-circuits to the static PNG path.
 
@@ -334,13 +334,13 @@ Tiles are data objects in `client/src/features/catalogue/data/tiles.js`:
   price: 1800,
   rooms: ["kitchen", "living-room"],  // which rooms offer it in quick swap
   colors: ["#b8c4c8", "#8fa4aa"],     // palette for catalogue display
-  texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/<Name>.png" },
+  texture: { kind: "image", src: "https://res.cloudinary.com/<cloud>/image/upload/v<version>/tile-visualizer/tiles/<id>.png" },
 }
 ```
 
 Steps to add a tile:
 
-1. Drop the texture into `client/public/assets/tile-textures/<SERIES>/`.
+1. Upload the texture via `POST /api/uploads` (admin) and use the returned secure `url` (stored under `tile-visualizer/tiles/`).
 2. Add an entry to `tiles` (or use a procedural `texture` object if no image exists).
 3. Add the tile to `tilesForRoom(roomId)` by including the room id in `tile.rooms`.
 

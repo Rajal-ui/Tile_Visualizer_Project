@@ -12,7 +12,7 @@ export const tiles = [
     price: 1800,
     rooms: ["kitchen", "living-room", "bathroom"],
     colors: ["#b8c4c8", "#8fa4aa"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium Aruba Armani.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712446/tile-visualizer/tiles/zzma0qcdnzt1d2suglol.png" },
   },
   {
     id: "tile-iridium-belgium-rossata",
@@ -27,7 +27,7 @@ export const tiles = [
     price: 1900,
     rooms: ["kitchen", "living-room"],
     colors: ["#c4b8a8", "#a89888"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium Belgium rossata.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712448/tile-visualizer/tiles/atliqf6ks58e7ore3vee.png" },
   },
   {
     id: "tile-iridium-dubbo-beige",
@@ -42,7 +42,7 @@ export const tiles = [
     price: 1750,
     rooms: ["kitchen", "living-room", "bedroom"],
     colors: ["#d4c8b4", "#b8a890"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium Dubbo beige.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712449/tile-visualizer/tiles/isko5sc9ex38auubd1ze.png" },
   },
   {
     id: "tile-iridium-friesland-silk",
@@ -57,7 +57,7 @@ export const tiles = [
     price: 2000,
     rooms: ["kitchen", "bathroom", "living-room"],
     colors: ["#e0e4e8", "#c8ccd0"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium Friesland silk.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712451/tile-visualizer/tiles/ojzoj5cqtuyfrxjoz5fs.png" },
   },
   {
     id: "tile-iridium-kamplay-ivory",
@@ -72,7 +72,7 @@ export const tiles = [
     price: 1850,
     rooms: ["kitchen", "living-room", "bedroom"],
     colors: ["#e8dcc8", "#ccc0a8"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium kamplay Ivory.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712454/tile-visualizer/tiles/mwhtv1tox4jixe73ui3l.png" },
   },
   {
     id: "tile-iridium-thorn-white",
@@ -87,7 +87,7 @@ export const tiles = [
     price: 2100,
     rooms: ["kitchen", "bathroom", "living-room"],
     colors: ["#f0f2f4", "#d8dce0"],
-    texture: { kind: "image", src: "/assets/tile-textures/IRIDIUM/Iridium Thorn White.png" },
+    texture: { kind: "image", src: "https://res.cloudinary.com/i5wyab1g/image/upload/v1786712453/tile-visualizer/tiles/ds3xifhdo1gjwm5ise08.png" },
   },
 ];
 

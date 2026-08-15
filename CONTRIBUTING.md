@@ -603,6 +603,7 @@ Open a PR against **`develop`** and fill in `.github/pull_request_template.md` c
 | `frontend` | `client/**` | Vite production build (`npm run build`) |
 | `backend` | `server/**`, `shared/**` | `node:test` suite (`npm test`) |
 | `database` | `shared/schemas/**`, `server/src/models/**`, `server/src/config/db.js` | Zod + layout schema validation (no MongoDB in CI) |
+| `e2e` | `tests/e2e/**`, `playwright.config.ts`, `Dockerfile`, `docker-compose.yml`, `docker/**` | Playwright sales-demo flow (`npm run test:e2e`); mock-backed so it needs no live services |
 | `chore` | docs, scripts, tests, `.github`, root config | lockfile sync + local doc-link integrity |
 | all PRs | — | security scan (committed `.env`, secret patterns) |
 

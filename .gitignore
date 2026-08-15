@@ -5,6 +5,10 @@ node_modules/
 dist/
 build/
 
+# Playwright E2E artifacts
+playwright-report/
+test-results/
+
 # Environment files — never commit real secrets
 .env
 .env.local

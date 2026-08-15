@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MonitorPlay, X, RotateCcw } from "lucide-react";
+import { MonitorPlay, X, RotateCcw, FileDown } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
 import LayoutPicker from "@/features/rooms/components/LayoutPicker.jsx";
@@ -10,9 +10,11 @@ import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
 import ProfileDropdown from "@/components/ProfileDropdown.jsx";
+import { exportRoomConfigPdf } from "@/lib/pdf-export.js";
 
 export default function Dashboard() {
-  const { resetAll, layout, layoutId, room, setRoom, setLayout } = useWorkspace();
+  const { resetAll, layout, layoutId, room, setRoom, setLayout, appliedTiles, surfaces } =
+    useWorkspace();
   const navigate = useNavigate();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
@@ -92,6 +94,15 @@ export default function Dashboard() {
             >
               <RotateCcw size={14} />
               <span className="hidden md:inline">Reset</span>
+            </button>
+            <button
+              data-testid="export-pdf"
+              onClick={() => exportRoomConfigPdf({ room, layout, appliedTiles, surfaces })}
+              title="Export the room configuration as a PDF"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              <FileDown size={14} />
+              <span className="hidden md:inline">Export PDF</span>
             </button>
             <ProfileDropdown onOpenLayouts={() => navigate("/admin/layouts")} />
           </div>

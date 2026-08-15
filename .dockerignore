@@ -1,0 +1,27 @@
+# Docker build context exclusions.
+#
+# Dependencies / build output are regenerated inside the image; everything else
+# in the repo (source, docs, CI, tests) is either copied explicitly or not
+# needed at runtime.
+
+node_modules/
+**/node_modules/
+
+client/dist/
+server/storage/
+
+.git/
+.github/
+docs/
+tests/
+playwright-report/
+test-results/
+
+*.log
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
+
+privatedoc/

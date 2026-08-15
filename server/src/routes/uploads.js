@@ -1,7 +1,5 @@
 import { Router } from "express";
 import multer from "multer";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { requireRole } from "../middleware/requireRole.js";
 import { cloudinaryService } from "../services/cloudinary.js";
 
 const router = Router();
@@ -28,7 +26,7 @@ const upload = multer({
  *             "rooms/{roomId}/foreground", "rooms/{roomId}/masks".
  *             Defaults to "tile-visualizer/tiles".
  */
-router.post("/", requireAuth, requireRole("admin"), upload.single("image"), async (req, res) => {
+router.post("/", upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No image file provided" });

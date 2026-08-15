@@ -202,18 +202,26 @@ export class LayoutStorage {
   }
 
   /**
-   * Lists all available layout configurations from the database.
-   * Runs the legacy filesystem migration before retrieving.
+   * Lists available layout configurations from the database, optionally
+   * filtered by room and/or status. Runs the legacy filesystem migration
+   * before retrieving.
+   * @param {{ roomId?: string, status?: string }} [filters]
    * @returns {Promise<Array<Object>>} An array of summary layout objects.
    */
-  async listLayouts() {
+  async listLayouts({ roomId, status } = {}) {
     await this._migrateLegacyLayouts();
-    const layouts = await Layout.find({}).lean();
+    const filter = {};
+    if (roomId) filter.roomId = roomId;
+    if (status) filter.status = status;
+    const layouts = await Layout.find(filter).lean();
     return layouts.map(cfg => ({
       id: cfg.id,
       name: cfg.name,
       type: cfg.type,
+      roomId: cfg.roomId ?? null,
       status: cfg.status,
+      background: cfg.background ?? null,
+      foreground: cfg.foreground ?? null,
       hasBackground: !!cfg.background,
       hasForeground: !!cfg.foreground,
       zoneCount: cfg.zones?.length || 0,

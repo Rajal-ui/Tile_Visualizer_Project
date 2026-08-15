@@ -7,13 +7,19 @@ import { layoutStorage } from "../services/layout-storage.js";
 import { sanitizeRoomId } from "../services/layout-storage.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import {
+  LAYOUT_STATUSES,
+  STATUS_PUBLISHED,
+  validateLayout,
+} from "@tile-visualizer/shared/schemas/layout.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    res.json(await layoutStorage.listLayouts());
+    const { roomId, status } = req.query;
+    res.json(await layoutStorage.listLayouts({ roomId, status }));
   } catch (e) {
     res.status(500).json({ error: "Failed to list layouts", details: e.message });
   }
@@ -112,6 +118,52 @@ router.post("/:roomId", requireAuth, requireRole("admin"), upload.any(), async (
     res.json({ ok: true, layout: config });
   } catch (e) {
     console.error("save layout error:", e);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * PATCH /api/layouts/:roomId — update a layout's status (admin only).
+ *
+ * The wizard's final step calls this with { status: "published" } to take a
+ * draft live. Publishing requires the layout to validate and to have at least
+ * one completed plane (polygon with 3+ points), mirroring the editor's guard.
+ */
+router.patch("/:roomId", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    sanitizeRoomId(roomId);
+
+    const { status } = req.body || {};
+    if (!LAYOUT_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${LAYOUT_STATUSES.join(", ")}` });
+    }
+
+    const config = await layoutStorage.readConfig(roomId);
+    const next = { ...config, status };
+
+    if (status === STATUS_PUBLISHED) {
+      const hasRenderablePlane = (next.zones || []).some((zone) =>
+        (zone.planes || []).some((plane) => (plane.polygon || []).length >= 3)
+      );
+      if (!hasRenderablePlane) {
+        return res.status(400).json({
+          error: "Publishing requires at least one completed plane (polygon with 3+ points).",
+        });
+      }
+      const { ok, errors } = validateLayout(next);
+      if (!ok) {
+        return res.status(400).json({ error: errors.join("; ") });
+      }
+    }
+
+    const updated = await layoutStorage.saveConfig(roomId, next);
+    res.json({ data: updated });
+  } catch (e) {
+    if (e.message?.startsWith("Layout not found")) {
+      return res.status(404).json({ error: e.message });
+    }
+    console.error("update layout status error:", e.message);
     res.status(400).json({ error: e.message });
   }
 });

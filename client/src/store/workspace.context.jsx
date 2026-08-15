@@ -13,6 +13,7 @@ const defaults = {
   surface: "Floor",
   applied: {},
   catalogueZone: "all",
+  layoutId: null,
 };
 
 /** Zone keys the catalogue surface tabs can filter by. */
@@ -27,7 +28,7 @@ export function WorkspaceProvider({ children }) {
     return rooms.find((x) => x.id === prefs.roomId) || rooms[0];
   }, [prefs.roomId]);
 
-  const layout = useLayout(room?.layout || null);
+  const layout = useLayout(prefs.layoutId || room?.layout || null);
 
   // Photo-based rooms expose their zone labels (Floor/Wall/Counter...) as the
   // tileable surfaces; CSS rooms keep the default set.
@@ -55,6 +56,12 @@ export function WorkspaceProvider({ children }) {
     });
 
   const setCatalogueZone = (zone) => setPrefs((p) => ({ ...p, catalogueZone: zone }));
+    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null }));
+  };
+
+  const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
+
+  const setSurface = (surface) => setPrefs((p) => ({ ...p, surface }));
 
   const applyTile = (tileId, surface) =>
     setPrefs((p) => ({
@@ -71,6 +78,7 @@ export function WorkspaceProvider({ children }) {
 
   const resetAll = () =>
     setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, catalogueZone: "all" });
+    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null });
 
   const appliedTiles = useMemo(() => {
     const map = {};
@@ -88,6 +96,8 @@ export function WorkspaceProvider({ children }) {
     room,
     roomId: prefs.roomId,
     setRoom,
+    layoutId: prefs.layoutId,
+    setLayout,
     surfaces,
     surface: prefs.surface,
     setSurface,

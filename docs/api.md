@@ -89,7 +89,7 @@ Body shape matches the canonical schema in `shared/schemas/layout.js`.
 
 | Method | Path                    | Purpose                                        |
 | ------ | ----------------------- | ---------------------------------------------- |
-| GET    | `/api/layouts`          | List photo layouts (draft + published)         |
+| GET    | `/api/layouts`          | List photo layouts; optional `roomId` + `status` query filters |
 | GET    | `/api/layouts/:roomId`  | Fetch full room config (background/foreground/zones/status) |
 | POST   | `/api/layouts/:roomId`  | Save full room config (all zones in one request, `status: draft | published`) |
 | GET    | `/api/layouts/:roomId/assets/...` | Serve stored background/foreground + generated mask PNGs |
@@ -98,6 +98,17 @@ Assets (background.png, foreground.png, generated mask PNGs) are stored in
 server/cloud storage at save time — never downloaded to the desktop. The
 compositor rasterizes zone masks from `planes[].polygon` at render time; mask
 PNGs are derived artifacts only.
+
+**List query params**
+
+| Param    | Type   | Notes                                        |
+| -------- | ------ | -------------------------------------------- |
+| `roomId` | string | Filter to layouts whose `roomId` matches     |
+| `status` | string | Filter to `draft` or `published` layouts     |
+
+The list response is an array of summaries: `{ id, name, type, roomId, status,
+background, foreground, hasBackground, hasForeground, zoneCount }`. `background`
+/`foreground` carry the asset URLs used as gallery thumbnails.
 
 ### Layout / stencil management (general, later)
 

@@ -42,9 +42,31 @@ export function fetchLayouts() {
   return api("/api/layouts");
 }
 
+/**
+ * List published photo layouts for a room (summary shape with thumbnail
+ * background/foreground URLs). Used by the Rep-facing layout picker.
+ */
+export function fetchPublishedLayoutsByRoom(roomId) {
+  const query = new URLSearchParams({
+    roomId: roomId ?? "",
+    status: "published",
+  });
+  return api(`/api/layouts?${query.toString()}`);
+}
+
 /** Fetch one layout's full config. */
 export function fetchLayout(roomId) {
   return api(`/api/layouts/${encodeURIComponent(roomId)}`);
+}
+
+/** PATCH /api/layouts/:roomId — update a layout's status (e.g. publish). */
+export function updateLayoutStatus(roomId, status) {
+  return api(`/api/layouts/${encodeURIComponent(roomId)}`, { method: "PATCH", body: { status } });
+}
+
+/** Publish a draft layout (transitions status to "published"). */
+export function publishLayout(roomId) {
+  return updateLayoutStatus(roomId, "published");
 }
 
 /**

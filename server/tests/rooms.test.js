@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mock } from "node:test";
-import { Room } from "../src/models/index.js";
+import jwt from "jsonwebtoken";
+import { Room, Admin } from "../src/models/index.js";
+import { JWT_SECRET } from "../src/config/env.js";
 
 const ROOM_SEED = [
   { id: "living-room", name: "Living Room", isActive: true },
@@ -16,7 +18,13 @@ const { default: app } = await import("../src/app.js");
 let server;
 let baseUrl;
 
+const adminToken = jwt.sign({ id: "admin-001" }, JWT_SECRET, { expiresIn: "1h" });
+
 test.before(() => {
+  mock.method(Admin, "findById", (id) =>
+    Promise.resolve(id === "admin-001" ? { _id: id, role: "admin", username: "roomadmin" } : null)
+  );
+
   mock.method(Room, "find", (filter = {}) => {
     const results = roomStore.filter(
       (r) => filter.isActive === undefined || r.isActive === filter.isActive
@@ -29,6 +37,13 @@ test.before(() => {
         return Promise.resolve([...results].sort((a, b) => a.name.localeCompare(b.name)));
       },
     };
+  });
+
+  mock.method(Room, "create", async (doc) => {
+    const room = { ...doc };
+    room.toJSON = () => ({ ...room });
+    roomStore.push(room);
+    return Promise.resolve(room);
   });
 });
 
@@ -57,4 +72,42 @@ test("GET /api/v1/rooms lists only active rooms publicly", async () => {
     ["kitchen", "living-room"]
   );
   assert.ok(body.data.every((r) => r.isActive === true));
+});
+
+test("POST /api/v1/rooms requires authentication", async () => {
+  const res = await fetch(`${baseUrl}/api/v1/rooms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "bathroom", name: "Bathroom" }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test("POST /api/v1/rooms rejects invalid payloads", async () => {
+  const res = await fetch(`${baseUrl}/api/v1/rooms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({ name: "" }),
+  });
+  assert.equal(res.status, 400);
+});
+
+test("POST /api/v1/rooms creates a room as admin", async () => {
+  const res = await fetch(`${baseUrl}/api/v1/rooms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify({ id: "bathroom", name: "Bathroom" }),
+  });
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.equal(body.data.id, "bathroom");
+  assert.equal(body.data.name, "Bathroom");
+  assert.equal(body.data.isActive, true);
+  assert.ok(roomStore.some((r) => r.id === "bathroom"));
 });

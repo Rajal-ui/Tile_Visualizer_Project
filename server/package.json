@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "test": "node --import ./tests/setup-env.js --test tests/*.test.js",
     "seed": "node src/scripts/seed.js",
+    "seed:demo-layouts": "node src/scripts/seed-demo-layouts.js",
     "migrate:kitchen-assets": "node src/scripts/migrate-kitchen-iridium-assets.js"
   },
   "engines": {

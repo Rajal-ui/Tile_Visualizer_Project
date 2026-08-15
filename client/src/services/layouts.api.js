@@ -2,6 +2,10 @@ import { API_BASE } from "@/services/api-base.js";
 
 const api = (path, { method = "GET", body, json = true } = {}) => {
   const opts = { method, headers: {}, credentials: "include" };
+  const token = typeof window !== "undefined" ? localStorage.getItem("tv_token") : null;
+  if (token) {
+    opts.headers["Authorization"] = `Bearer ${token}`;
+  }
   if (body != null) {
     if (body instanceof FormData) {
       opts.body = body;

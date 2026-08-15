@@ -76,7 +76,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
     }
 
     const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
     res.cookie("jwt", token, {
       httpOnly: true,
       secure: isProduction,
@@ -85,7 +85,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
       path: "/",
     });
     
-    res.json({ ok: true, user: admin.toJSON() });
+    res.json({ ok: true, user: admin.toJSON(), token });
   } catch (error) {
     console.error("Login error:", error.message);
     res.status(500).json({ error: "Failed to log in" });

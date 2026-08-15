@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { compositeAllZones } from "@/features/visualizer/lib/canvas-compositor.js";
 import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
 
@@ -9,10 +9,15 @@ import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
  * a zone polygon reports the zone's label up through `onSelectZone` so the
  * active surface/catalogue tab can follow the rep's editing target.
  */
-export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
+const RoomCanvas = forwardRef((props, ref) => {
+  const { layout, appliedTiles, onSelectZone } = props;
   const canvasRef = useRef(null);
   const [rendering, setRendering] = useState(false);
   const [compositeError, setCompositeError] = useState(null);
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current,
+  }));
 
   const zones = useMemo(() => layout?.zones || [], [layout]);
 
@@ -86,13 +91,13 @@ export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
   }, [layout, zones, appliedTiles]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
+    <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
       {/* Composite area */}
-      <div className="relative min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50">
         <canvas
           ref={canvasRef}
           onClick={handleCanvasClick}
-          className={`block h-full w-full object-contain ${onSelectZone && hasPlanes ? "cursor-pointer" : ""}`}
+          className={`block max-h-full max-w-full object-contain ${onSelectZone && hasPlanes ? "cursor-pointer" : ""}`}
         />
         {rendering && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
@@ -126,4 +131,8 @@ export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
       </div>
     </div>
   );
-}
+});
+
+RoomCanvas.displayName = "RoomCanvas";
+
+export default RoomCanvas;

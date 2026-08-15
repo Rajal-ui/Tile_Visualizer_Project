@@ -95,7 +95,12 @@ function drawHandles(ctx, pts, color) {
   });
 }
 
-export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose, embedded = false }) {
+export default function LayoutEditor({
+  layoutId = "kitchen-iridium",
+  onClose,
+  embedded = false,
+  hidePublish = false,
+}) {
   const [layout, setLayout] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -507,16 +512,25 @@ export default function LayoutEditor({ layoutId = "kitchen-iridium", onClose, em
           >
             <Save size={14} /> {saving ? "Saving…" : "Save Draft"}
           </button>
-          <button
-            onClick={() => persist(STATUS_PUBLISHED)}
-            disabled={saving}
-            title={apiDown ? "Start the backend server to publish." : undefined}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
-          >
-            <CheckCircle2 size={14} /> {saving ? "Saving…" : "Publish"}
-          </button>
+          {!hidePublish && (
+            <button
+              onClick={() => persist(STATUS_PUBLISHED)}
+              disabled={saving}
+              title={apiDown ? "Start the backend server to publish." : undefined}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
+            >
+              <CheckCircle2 size={14} /> {saving ? "Saving…" : "Publish"}
+            </button>
+          )}
         </div>
       </header>
+      {hidePublish && (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-900/40 px-5 py-1.5">
+          <span className="text-[10px] text-slate-400">
+            Publishing happens in the wizard&apos;s final step — after a live preview.
+          </span>
+        </div>
+      )}
 
       {/* Zone tabs */}
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/40 px-5 py-2">

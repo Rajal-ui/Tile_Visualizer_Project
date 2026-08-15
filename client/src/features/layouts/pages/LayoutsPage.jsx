@@ -53,14 +53,15 @@ export default function LayoutsPage({ onClose }) {
     };
   }, []);
 
-  // The wizard persists a draft layout server-side before handing off, so on
-  // launch we only need to select it and refresh the header's selector list.
-  const handleWizardLaunch = async (layoutId) => {
-    setShowWizard(false);
+  // Called by the wizard when a draft is persisted or published. Keeps the
+  // header's selector in sync and points the editor at the new layout.
+  const handleWizardChange = async (layoutId, { published } = {}) => {
     setSelectedId(layoutId);
     setNotice({
       type: "success",
-      text: "Draft layout created — draw zone polygons, then save or publish.",
+      text: published
+        ? "Layout published — it now appears in the Rep-facing picker."
+        : "Draft layout saved — draw zone polygons, then preview and publish.",
     });
     try {
       const list = await fetchLayouts();
@@ -190,7 +191,7 @@ export default function LayoutsPage({ onClose }) {
       </div>
 
       {showWizard && (
-        <NewLayoutWizard onClose={() => setShowWizard(false)} onLaunch={handleWizardLaunch} />
+        <NewLayoutWizard onClose={() => setShowWizard(false)} onDone={handleWizardChange} />
       )}
 
       {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}

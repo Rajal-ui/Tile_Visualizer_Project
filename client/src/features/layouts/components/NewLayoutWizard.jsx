@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   Check,
+  CheckCircle2,
   ImagePlus,
   LayoutGrid,
   Loader2,
@@ -15,13 +16,17 @@ import {
 import { useRooms, ROOMS_QUERY_KEY } from "@/features/rooms/hooks/useRooms.js";
 import { createRoom as createRoomDoc } from "@/services/rooms.api.js";
 import { uploadImage } from "@/services/tiles.api.js";
-import { saveLayout } from "@/services/layouts.api.js";
+import { fetchLayout, publishLayout, saveLayout } from "@/services/layouts.api.js";
 import { createRoom, createZone, STATUS_DRAFT } from "@shared/schemas/layout.js";
+import LayoutEditor from "@/features/layouts/pages/LayoutEditor.jsx";
+import LayoutPreview from "@/features/layouts/components/LayoutPreview.jsx";
 
 const STEPS = [
   { id: 1, label: "Room" },
-  { id: 2, label: "Upload assets" },
-  { id: 3, label: "Zone Editor" },
+  { id: 2, label: "Upload" },
+  { id: 3, label: "Editor" },
+  { id: 4, label: "Preview" },
+  { id: 5, label: "Publish" },
 ];
 
 const DEFAULT_ZONES = [
@@ -39,15 +44,18 @@ function slugify(text) {
 }
 
 /**
- * Admin Layout Onboarding Wizard — Steps 1–3 (Room, Upload, Editor).
+ * Admin Layout Onboarding Wizard — all 5 steps.
  *
- * Step 1 picks an existing Room or creates one inline. Step 2 uploads the
- * background/foreground to Cloudinary under `rooms/{roomId}/...`. Step 3
- * persists a draft layout and hands off to the Zone Editor via `onLaunch`.
- * Wizard state (room, uploaded URLs) lives in this component so back/forward
- * navigation never loses progress.
+ *  1. Room      — pick an existing Room or create one inline.
+ *  2. Upload    — background/foreground to Cloudinary under `rooms/{roomId}/…`.
+ *  3. Editor    — embed the Zone Editor scoped to the new draft layout.
+ *  4. Preview   — live canvas-compositor preview of the draft.
+ *  5. Publish   — PATCH /api/layouts/:id to take the draft live.
+ *
+ * Wizard state (room, URLs, layoutId) lives here so back/forward never loses
+ * progress. `onDone(layoutId, { published })` lets the host refresh its list.
  */
-export default function NewLayoutWizard({ onClose, onLaunch }) {
+export default function NewLayoutWizard({ onClose, onDone }) {
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState("existing"); // "existing" | "new"
   const [room, setRoom] = useState(null); // { id, name }
@@ -55,8 +63,11 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
   const [layoutName, setLayoutName] = useState("");
   const [bg, setBg] = useState(null); // { url }
   const [fg, setFg] = useState(null); // { url } | null
-  const [uploading, setUploading] = useState(null); // "bg" | "fg"
-  const [busy, setBusy] = useState(false); // room create / draft save
+  const [layoutId, setLayoutId] = useState(null);
+  const [previewLayout, setPreviewLayout] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [uploading, setUploading] = useState(null); // "background" | "foreground"
+  const [busy, setBusy] = useState(false); // room create / draft save / publish
   const [error, setError] = useState(null);
 
   const { rooms, isLoading } = useRooms();
@@ -111,14 +122,16 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
     }
   };
 
-  const launchEditor = async () => {
+  // Step 2 → 3: persist a draft layout (Cloudinary URLs + default zones) so the
+  // embedded Zone Editor has something to load, then hand its id to the editor.
+  const beginEditor = async () => {
     if (!room || !bg || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const layoutId = slugify(layoutName) || `${slugify(room.id)}-layout`;
+      const id = slugify(layoutName) || `${slugify(room.id)}-layout`;
       const config = createRoom({
-        id: layoutId,
+        id,
         name: layoutName.trim(),
         roomId: room.id,
         background: bg.url,
@@ -126,15 +139,134 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
         zones: DEFAULT_ZONES.map((z) => createZone({ id: z.id, label: z.label })),
         status: STATUS_DRAFT,
       });
-      await saveLayout(layoutId, config);
-      onLaunch(layoutId);
+      await saveLayout(id, config);
+      setLayoutId(id);
+      onDone(id, { published: false });
+      setStep(3);
     } catch (e) {
-      setError(e.message || "Failed to create the draft layout.");
+      setError(e.message || "Failed to save the draft layout.");
     } finally {
       setBusy(false);
     }
   };
 
+  // Step 3 → 4: fetch the latest saved config so the preview reflects the most
+  // recent Save Draft, then show the live compositor preview.
+  const goPreview = async () => {
+    if (!layoutId || previewLoading) return;
+    setPreviewLoading(true);
+    setError(null);
+    try {
+      const cfg = await fetchLayout(layoutId);
+      setPreviewLayout(cfg);
+      setStep(4);
+    } catch (e) {
+      setError(e.message || "Could not load the draft for preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const publish = async () => {
+    if (!layoutId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await publishLayout(layoutId);
+      onDone(layoutId, { published: true });
+      onClose();
+    } catch (e) {
+      setError(e.message || "Publishing failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const finishAsDraft = () => {
+    if (layoutId) onDone(layoutId, { published: false });
+    onClose();
+  };
+
+  const planeCount = useMemo(
+    () =>
+      (previewLayout?.zones || []).reduce(
+        (sum, zone) => sum + (zone.planes || []).filter((p) => (p.polygon || []).length >= 3).length,
+        0
+      ),
+    [previewLayout]
+  );
+
+  // --- Step 3: full-screen dark view wrapping the embedded Zone Editor ------
+  if (step === 3) {
+    return (
+      <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/80 px-5 py-3">
+          <div>
+            <h2 className="text-sm font-extrabold text-white">New Layout Wizard</h2>
+            <p className="text-[10px] text-slate-400">
+              Step 3 of {STEPS.length} · Zone Editor
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </header>
+
+        <WizardStepper steps={STEPS} current={3} dark />
+
+        <div className="min-h-0 flex-1">
+          {layoutId ? (
+            <LayoutEditor
+              key={layoutId}
+              layoutId={layoutId}
+              embedded
+              hidePublish
+              onClose={onClose}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-400">
+              Saving draft…
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="shrink-0 border-t border-slate-800 bg-red-500/10 px-5 py-2 text-[11px] font-semibold text-red-300">
+            {error}
+          </div>
+        )}
+
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/80 px-5 py-3">
+          <button
+            onClick={() => setStep(2)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+          >
+            <ArrowLeft size={13} /> Back to uploads
+          </button>
+          <span className="text-[10px] text-slate-500">
+            Draw zone polygons, press Save Draft, then continue to the live preview.
+          </span>
+          <button
+            onClick={goPreview}
+            disabled={previewLoading}
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+          >
+            {previewLoading ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <ArrowRight size={13} />
+            )}
+            {previewLoading ? "Loading…" : "Preview"}
+          </button>
+        </footer>
+      </div>
+    );
+  }
+
+  // --- Steps 1, 2, 4, 5: white modal ----------------------------------------
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
@@ -149,7 +281,7 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
           <div>
             <h2 className="text-sm font-bold text-slate-800">New Layout Wizard</h2>
             <p className="text-xs text-slate-400">
-              Onboard a new photo layout — room, assets, then the zone editor.
+              Onboard a new photo layout — room, assets, zones, preview, publish.
             </p>
           </div>
           <button
@@ -161,41 +293,7 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
-          {STEPS.map((s, i) => {
-            const active = step === s.id;
-            const done = step > s.id;
-            return (
-              <div key={s.id} className="flex flex-1 items-center gap-2">
-                <div
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold transition ${
-                    done
-                      ? "bg-emerald-500 text-white"
-                      : active
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-200 text-slate-400"
-                  }`}
-                >
-                  {done ? <Check size={12} /> : s.id}
-                </div>
-                <span
-                  className={`text-[11px] font-bold ${
-                    active ? "text-slate-800" : done ? "text-emerald-600" : "text-slate-400"
-                  }`}
-                >
-                  {s.label}
-                </span>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className={`h-px flex-1 ${
-                      done || active ? "bg-emerald-400" : "bg-slate-200"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <WizardStepper steps={STEPS} current={step} />
 
         {error && (
           <div className="flex items-start gap-2 border-b border-red-100 bg-red-50 px-5 py-2.5 text-[11px] font-semibold text-red-600">
@@ -335,7 +433,6 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
               </div>
 
               <AssetUpload
-                kind="background"
                 label="Background photo"
                 hint="Furniture-removed clean room photo (required)."
                 value={bg}
@@ -344,7 +441,6 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
                 onRemove={() => setBg(null)}
               />
               <AssetUpload
-                kind="foreground"
                 label="Foreground cutout"
                 hint="Furniture-only photo with transparent floor (optional)."
                 value={fg}
@@ -355,15 +451,40 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
+            <>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Step 4 · Live preview
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Neutral tile applied to drawn planes
+                </span>
+              </div>
+
+              {previewLoading ? (
+                <div className="flex h-64 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400">
+                  <Loader2 size={14} className="animate-spin" /> Loading draft…
+                </div>
+              ) : previewLayout ? (
+                <LayoutPreview layout={previewLayout} />
+              ) : (
+                <div className="py-10 text-center text-xs text-slate-400">
+                  Draft not loaded yet — go back to the editor and retry.
+                </div>
+              )}
+            </>
+          )}
+
+          {step === 5 && (
             <>
               <div className="mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Step 3 · Launch Zone Editor
+                  Step 5 · Publish
                 </span>
                 <p className="mt-1 text-xs text-slate-500">
-                  A draft layout will be saved and opened in the Zone Editor, where you draw
-                  floor/wall/counter polygons, then save or publish.
+                  Publishing makes this layout appear in the Rep-facing layout picker for the{" "}
+                  {room?.name || "selected"} room.
                 </p>
               </div>
 
@@ -379,7 +500,7 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
                     <div>
                       <p className="text-xs font-bold text-slate-800">{layoutName}</p>
                       <p className="text-[10px] text-slate-400">
-                        {room?.name} · {slugify(layoutName)} · draft
+                        {room?.name} · {layoutId} · draft
                       </p>
                     </div>
                   </div>
@@ -391,6 +512,11 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
                   <Thumb label="Background" url={bg?.url} />
                   <Thumb label="Foreground" url={fg?.url} />
                 </div>
+                <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-[11px] font-semibold text-slate-500">
+                  <LayoutGrid size={13} className="text-slate-400" />
+                  {planeCount} completed plane{planeCount === 1 ? "" : "s"} across zones
+                  {planeCount === 0 && " — tiles won't render until planes are drawn"}
+                </div>
               </div>
             </>
           )}
@@ -398,48 +524,136 @@ export default function NewLayoutWizard({ onClose, onLaunch }) {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
-          {step > 1 ? (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              <ArrowLeft size={13} /> Back
-            </button>
-          ) : (
+          {step === 1 ? (
             <button
               onClick={onClose}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             >
               Cancel
             </button>
-          )}
-
-          {step < 3 ? (
-            <button
-              onClick={() => setStep((s) => s + 1)}
-              disabled={step === 1 ? !canContinueStep1 : !bg || uploading}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Continue <ArrowRight size={13} />
-            </button>
           ) : (
             <button
-              onClick={launchEditor}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+              onClick={() => setStep((s) => s - 1)}
+              disabled={busy || previewLoading}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
             >
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <LayoutGrid size={13} />}
-              {busy ? "Creating draft…" : "Open Zone Editor"}
+              <ArrowLeft size={13} />
+              {step === 4 ? "Back to editor" : "Back"}
             </button>
           )}
+
+          <div className="flex items-center gap-2">
+            {step === 5 && (
+              <button
+                onClick={finishAsDraft}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Save as draft &amp; close
+              </button>
+            )}
+
+            {step === 1 && (
+              <button
+                onClick={() => setStep(2)}
+                disabled={!canContinueStep1}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Continue <ArrowRight size={13} />
+              </button>
+            )}
+
+            {step === 2 && (
+              <button
+                onClick={beginEditor}
+                disabled={!bg || uploading || busy}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <LayoutGrid size={13} />}
+                {busy ? "Saving draft…" : "Open Zone Editor"}
+              </button>
+            )}
+
+            {step === 4 && (
+              <button
+                onClick={() => setStep(5)}
+                disabled={previewLoading}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Continue to Publish <ArrowRight size={13} />
+              </button>
+            )}
+
+            {step === 5 && (
+              <button
+                onClick={publish}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                {busy ? "Publishing…" : "Publish layout"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function AssetUpload({ kind, label, hint, value, uploading, onFile, onRemove }) {
+function WizardStepper({ steps, current, dark = false }) {
+  return (
+    <div
+      className={`flex items-center gap-2 px-5 py-3 ${
+        dark ? "border-b border-slate-800 bg-slate-900/40" : "border-b border-slate-200 bg-slate-50"
+      }`}
+    >
+      {steps.map((s, i) => {
+        const active = current === s.id;
+        const done = current > s.id;
+        return (
+          <div key={s.id} className="flex flex-1 items-center gap-2">
+            <div
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold transition ${
+                done
+                  ? "bg-emerald-500 text-white"
+                  : active
+                    ? dark
+                      ? "bg-white text-slate-900"
+                      : "bg-slate-900 text-white"
+                    : dark
+                      ? "bg-slate-800 text-slate-500"
+                      : "bg-slate-200 text-slate-400"
+              }`}
+            >
+              {done ? <Check size={12} /> : s.id}
+            </div>
+            <span
+              className={`text-[11px] font-bold ${
+                active
+                  ? dark
+                    ? "text-white"
+                    : "text-slate-800"
+                  : done
+                    ? dark
+                      ? "text-emerald-400"
+                      : "text-emerald-600"
+                    : "text-slate-400"
+              }`}
+            >
+              {s.label}
+            </span>
+            {i < steps.length - 1 && (
+              <div className={`h-px flex-1 ${done || active ? "bg-emerald-400" : "bg-slate-200"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AssetUpload({ label, hint, value, uploading, onFile, onRemove }) {
   return (
     <div
       className={`flex items-center gap-4 rounded-xl border p-3 ${

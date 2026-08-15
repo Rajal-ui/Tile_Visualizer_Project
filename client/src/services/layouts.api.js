@@ -59,6 +59,16 @@ export function fetchLayout(roomId) {
   return api(`/api/layouts/${encodeURIComponent(roomId)}`);
 }
 
+/** PATCH /api/layouts/:roomId — update a layout's status (e.g. publish). */
+export function updateLayoutStatus(roomId, status) {
+  return api(`/api/layouts/${encodeURIComponent(roomId)}`, { method: "PATCH", body: { status } });
+}
+
+/** Publish a draft layout (transitions status to "published"). */
+export function publishLayout(roomId) {
+  return updateLayoutStatus(roomId, "published");
+}
+
 /**
  * Save a layout config. Pass `files` to upload assets (background/foreground/masks)
  * via multipart form-data; otherwise sends JSON.

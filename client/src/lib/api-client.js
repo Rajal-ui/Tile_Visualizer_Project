@@ -53,6 +53,11 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   config.authGeneration = authGeneration;
+  const token = typeof window !== "undefined" ? localStorage.getItem("tv_token") : null;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -63,6 +68,9 @@ apiClient.interceptors.response.use(
       error.response?.status === 401 &&
       error.config?.authGeneration === authGeneration
     ) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("tv_token");
+      }
       bumpAuthGeneration();
       window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
     }

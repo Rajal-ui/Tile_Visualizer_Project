@@ -50,6 +50,9 @@ export function AuthProvider({ children }) {
     async (username, password) => {
       try {
         const data = await apiClient.post("/api/auth/login", { username, password });
+        if (data?.token) {
+          localStorage.setItem("tv_token", data.token);
+        }
         // Start a new authentication epoch so stale pre-login 401 responses
         // are ignored by the global 401 handler.
         bumpAuthGeneration();
@@ -69,6 +72,7 @@ export function AuthProvider({ children }) {
     } catch {
       return { ok: false, message: "Failed to log out." };
     } finally {
+      localStorage.removeItem("tv_token");
       setUser(null);
     }
   }, [setUser]);

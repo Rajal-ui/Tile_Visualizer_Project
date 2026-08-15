@@ -40,7 +40,7 @@ export function WorkspaceProvider({ children }) {
   }, [layout]);
 
   const setRoom = (roomId) => {
-    setPrefs((p) => ({ ...p, roomId, surface: "Floor", catalogueZone: "all" }));
+    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null, catalogueZone: "all" }));
   };
 
   // Changing the active surface (surface tabs or a canvas zone click) also
@@ -56,12 +56,8 @@ export function WorkspaceProvider({ children }) {
     });
 
   const setCatalogueZone = (zone) => setPrefs((p) => ({ ...p, catalogueZone: zone }));
-    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null }));
-  };
 
   const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
-
-  const setSurface = (surface) => setPrefs((p) => ({ ...p, surface }));
 
   const applyTile = (tileId, surface) =>
     setPrefs((p) => ({
@@ -77,8 +73,7 @@ export function WorkspaceProvider({ children }) {
     });
 
   const resetAll = () =>
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, catalogueZone: "all" });
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null });
+    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null, catalogueZone: "all" });
 
   const appliedTiles = useMemo(() => {
     const map = {};

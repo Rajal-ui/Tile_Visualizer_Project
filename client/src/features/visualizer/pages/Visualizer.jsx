@@ -127,11 +127,8 @@ function PhotoViewer({ room, floorTile }) {
 }
 
 
-export default function Visualizer({ present = false }) {
-  const { room, appliedTiles, setSurface } = useWorkspace();
-  const layout = useLayout(room.layout || null);
 export default function Visualizer({ present = false, layoutId = null }) {
-  const { room, appliedTiles } = useWorkspace();
+  const { room, appliedTiles, setSurface } = useWorkspace();
   const layout = useLayout(layoutId || room.layout || null);
   const floorTile = appliedTiles["Floor"] || null;
 

@@ -10,7 +10,7 @@ import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
  * active surface/catalogue tab can follow the rep's editing target.
  */
 const RoomCanvas = forwardRef((props, ref) => {
-  const { layout, appliedTiles, onSelectZone } = props;
+  const { layout, appliedTiles, onSelectZone, activeZone } = props;
   const canvasRef = useRef(null);
   const [rendering, setRendering] = useState(false);
   const [compositeError, setCompositeError] = useState(null);
@@ -76,6 +76,7 @@ const RoomCanvas = forwardRef((props, ref) => {
           foreground: layout.foreground,
           zones,
           appliedTiles,
+          activeZone,
           canvas,
         });
       } catch (err) {
@@ -88,12 +89,12 @@ const RoomCanvas = forwardRef((props, ref) => {
     return () => {
       cancelled = true;
     };
-  }, [layout, zones, appliedTiles]);
+  }, [layout, zones, appliedTiles, activeZone]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Composite area */}
-      <div className="relative min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50">
+      <div className="relative min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50" data-active-zone={activeZone || ""}>
         <canvas
           ref={canvasRef}
           onClick={handleCanvasClick}

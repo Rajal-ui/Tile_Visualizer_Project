@@ -12,7 +12,6 @@ import LayoutsPage from "@/features/layouts/pages/LayoutsPage.jsx";
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { resetAll, layoutId } = useWorkspace();
-  const { resetAll } = useWorkspace();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
   const [showLayouts, setShowLayouts] = useState(false);

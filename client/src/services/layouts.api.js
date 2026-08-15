@@ -64,6 +64,11 @@ export function updateLayoutStatus(roomId, status) {
   return api(`/api/layouts/${encodeURIComponent(roomId)}`, { method: "PATCH", body: { status } });
 }
 
+/** DELETE /api/layouts/:roomId — permanently remove a layout and its assets. */
+export function deleteLayout(roomId) {
+  return api(`/api/layouts/${encodeURIComponent(roomId)}`, { method: "DELETE" });
+}
+
 /** Publish a draft layout (transitions status to "published"). */
 export function publishLayout(roomId) {
   return updateLayoutStatus(roomId, "published");

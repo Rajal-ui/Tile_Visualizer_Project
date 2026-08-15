@@ -196,26 +196,22 @@ export default function NewLayoutWizard({ onClose, onDone }) {
     [previewLayout]
   );
 
-  // --- Step 3: full-screen dark view wrapping the embedded Zone Editor ------
+  // --- Step 3: full-screen light view wrapping the embedded Zone Editor ------
   if (step === 3) {
     return (
-      <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/80 px-5 py-3">
-          <div>
-            <h2 className="text-sm font-extrabold text-white">New Layout Wizard</h2>
-            <p className="text-[10px] text-slate-400">
-              Step 3 of {STEPS.length} · Zone Editor
-            </p>
+      <div className="fixed inset-0 z-[70] flex flex-col bg-[#F7F8FA]">
+        {/* Thin wizard chrome — stepper + close only */}
+        <div className="flex shrink-0 items-center gap-3 border-b border-[#E7E9EE] bg-white px-4 py-2">
+          <div className="flex-1">
+            <WizardStepper steps={STEPS} current={3} />
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            className="ml-2 shrink-0 rounded-lg p-1.5 text-[#6B7280] transition hover:bg-[#F7F8FA] hover:text-[#14161A]"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
-        </header>
-
-        <WizardStepper steps={STEPS} current={3} dark />
+        </div>
 
         <div className="min-h-0 flex-1">
           {layoutId ? (
@@ -227,32 +223,32 @@ export default function NewLayoutWizard({ onClose, onDone }) {
               onClose={onClose}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-400">
+            <div className="flex h-full items-center justify-center text-sm text-[#6B7280]">
               Saving draft…
             </div>
           )}
         </div>
 
         {error && (
-          <div className="shrink-0 border-t border-slate-800 bg-red-500/10 px-5 py-2 text-[11px] font-semibold text-red-300">
+          <div className="shrink-0 border-t border-[#E7E9EE] bg-[#fee2e2] px-5 py-2 text-[11px] font-medium text-[#DC2626]">
             {error}
           </div>
         )}
 
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/80 px-5 py-3">
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-[#E7E9EE] bg-white px-5 py-3">
           <button
             onClick={() => setStep(2)}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+            className="flex items-center gap-1.5 rounded-lg border border-[#E7E9EE] px-3.5 py-2 text-sm font-medium text-[#14161A] transition hover:bg-[#F7F8FA]"
           >
             <ArrowLeft size={13} /> Back to uploads
           </button>
-          <span className="text-[10px] text-slate-500">
+          <span className="hidden text-xs text-[#6B7280] sm:block">
             Draw zone polygons, press Save Draft, then continue to the live preview.
           </span>
           <button
             onClick={goPreview}
             disabled={previewLoading}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-lg bg-[#6D5EF5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#5a4ad6] disabled:opacity-60"
           >
             {previewLoading ? (
               <Loader2 size={13} className="animate-spin" />
@@ -557,7 +553,7 @@ export default function NewLayoutWizard({ onClose, onDone }) {
               <button
                 onClick={() => setStep(2)}
                 disabled={!canContinueStep1}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-[#6D5EF5] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#5a4ad6] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Continue <ArrowRight size={13} />
               </button>
@@ -567,7 +563,7 @@ export default function NewLayoutWizard({ onClose, onDone }) {
               <button
                 onClick={beginEditor}
                 disabled={!bg || uploading || busy}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-[#6D5EF5] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#5a4ad6] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <LayoutGrid size={13} />}
                 {busy ? "Saving draft…" : "Open Zone Editor"}
@@ -578,7 +574,7 @@ export default function NewLayoutWizard({ onClose, onDone }) {
               <button
                 onClick={() => setStep(5)}
                 disabled={previewLoading}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-[#6D5EF5] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#5a4ad6] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Continue to Publish <ArrowRight size={13} />
               </button>
@@ -588,7 +584,7 @@ export default function NewLayoutWizard({ onClose, onDone }) {
               <button
                 onClick={publish}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-lg bg-[#6D5EF5] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#5a4ad6] disabled:opacity-60"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                 {busy ? "Publishing…" : "Publish layout"}
@@ -601,13 +597,9 @@ export default function NewLayoutWizard({ onClose, onDone }) {
   );
 }
 
-function WizardStepper({ steps, current, dark = false }) {
+function WizardStepper({ steps, current }) {
   return (
-    <div
-      className={`flex items-center gap-2 px-5 py-3 ${
-        dark ? "border-b border-slate-800 bg-slate-900/40" : "border-b border-slate-200 bg-slate-50"
-      }`}
-    >
+    <div className="flex items-center gap-2 border-b border-[#E7E9EE] bg-[#F7F8FA] px-5 py-3">
       {steps.map((s, i) => {
         const active = current === s.id;
         const done = current > s.id;
@@ -616,35 +608,23 @@ function WizardStepper({ steps, current, dark = false }) {
             <div
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold transition ${
                 done
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-[#6D5EF5] text-white"
                   : active
-                    ? dark
-                      ? "bg-white text-slate-900"
-                      : "bg-slate-900 text-white"
-                    : dark
-                      ? "bg-slate-800 text-slate-500"
-                      : "bg-slate-200 text-slate-400"
+                    ? "bg-[#6D5EF5] text-white ring-4 ring-[#6D5EF5]/15"
+                    : "border border-[#E7E9EE] bg-white text-[#6B7280]"
               }`}
             >
               {done ? <Check size={12} /> : s.id}
             </div>
             <span
               className={`text-[11px] font-bold ${
-                active
-                  ? dark
-                    ? "text-white"
-                    : "text-slate-800"
-                  : done
-                    ? dark
-                      ? "text-emerald-400"
-                      : "text-emerald-600"
-                    : "text-slate-400"
+                active ? "text-[#14161A]" : done ? "text-[#6D5EF5]" : "text-[#9CA3AF]"
               }`}
             >
               {s.label}
             </span>
             {i < steps.length - 1 && (
-              <div className={`h-px flex-1 ${done || active ? "bg-emerald-400" : "bg-slate-200"}`} />
+              <div className={`h-px flex-1 ${done || active ? "bg-[#6D5EF5]" : "bg-[#E7E9EE]"}`} />
             )}
           </div>
         );

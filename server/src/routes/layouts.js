@@ -168,4 +168,25 @@ router.patch("/:roomId", requireAuth, requireRole("admin"), async (req, res) => 
   }
 });
 
+/**
+ * DELETE /api/layouts/:roomId — permanently remove a layout (admin only).
+ *
+ * Deletes the database record and any stored asset files on disk. There is no
+ * undo, so the admin UI confirms before calling this.
+ */
+router.delete("/:roomId", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    sanitizeRoomId(roomId);
+    await layoutStorage.deleteLayout(roomId);
+    res.json({ ok: true, deleted: roomId });
+  } catch (e) {
+    if (e.message?.startsWith("Layout not found")) {
+      return res.status(404).json({ error: e.message });
+    }
+    console.error("delete layout error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

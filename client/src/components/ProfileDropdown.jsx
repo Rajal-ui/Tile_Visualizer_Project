@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { LayoutGrid, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
-import AdminSettings from "@/components/AdminSettings.jsx";
 
 function initials(name) {
   return (name || "A")
@@ -42,13 +42,12 @@ function MenuItem({ icon: Icon, label, description, onClick, danger = false }) {
  * Unified profile dropdown for the top navigation bar (Chrome profile style).
  *
  * The trigger is the avatar / user badge; the floating card exposes the user
- * header plus the Layouts, Admin Control (settings) and Logout actions. The
- * admin settings modal is owned here, mirroring the old LayoutsFab behaviour.
+ * header plus the Tile Studio, Admin Control (settings) and Logout actions.
  */
 export default function ProfileDropdown({ onOpenLayouts }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const rootRef = useRef(null);
 
   const username = user?.username || "Admin";
@@ -77,7 +76,7 @@ export default function ProfileDropdown({ onOpenLayouts }) {
 
   const handleSettings = () => {
     setOpen(false);
-    setShowSettings(true);
+    navigate("/admin/settings");
   };
 
   return (
@@ -116,7 +115,7 @@ export default function ProfileDropdown({ onOpenLayouts }) {
             <div className="p-1.5">
               <MenuItem
                 icon={LayoutGrid}
-                label="Layouts"
+                label="Tile Studio"
                 description="Open the layout editor"
                 onClick={handleLayouts}
               />
@@ -132,8 +131,6 @@ export default function ProfileDropdown({ onOpenLayouts }) {
           </div>
         )}
       </div>
-
-      {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}
     </>
   );
 }

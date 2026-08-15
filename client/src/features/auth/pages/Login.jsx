@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Lock, User, Eye, EyeOff, LogIn } from "lucide-react";
 import { useAuth } from "@/features/auth/auth.context.jsx";
 
-export default function Login({ onForgotPassword }) {
+export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -50,7 +52,7 @@ export default function Login({ onForgotPassword }) {
             </span>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Digital tile catalogue &amp; visualizer console
+            Digital tile catalogue &amp; visualizer dashboard
           </p>
         </div>
 
@@ -135,7 +137,7 @@ export default function Login({ onForgotPassword }) {
 
           <button
             type="button"
-            onClick={onForgotPassword}
+            onClick={() => navigate("/forgot-password")}
             className="mt-4 flex w-full items-center justify-center text-sm font-semibold text-brand-600 transition hover:text-brand-700"
           >
             Forgot password?

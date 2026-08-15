@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Bell, LogOut, Palette, ShieldCheck, X } from "lucide-react";
-import { useAuth } from "@/features/auth/auth.context.jsx";
+import { Bell, Palette, X } from "lucide-react";
 
 function Toggle({ label, description, enabled, onChange }) {
   return (
@@ -31,11 +30,52 @@ function Toggle({ label, description, enabled, onChange }) {
   );
 }
 
-export default function AdminSettings({ onClose }) {
-  const { user, logout } = useAuth();
+export default function AdminSettings({ onClose, inline = false }) {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [autoPublish, setAutoPublish] = useState(false);
 
+  const body = (
+    <div className="tile-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+      <section className="space-y-2">
+        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <Bell size={12} /> Notifications
+        </h3>
+        <Toggle
+          label="Email alerts"
+          description="Notify me when a layout is published"
+          enabled={emailAlerts}
+          onChange={setEmailAlerts}
+        />
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <Palette size={12} /> Publishing
+        </h3>
+        <Toggle
+          label="Auto-publish drafts"
+          description="Publish layouts immediately on save"
+          enabled={autoPublish}
+          onChange={setAutoPublish}
+        />
+      </section>
+    </div>
+  );
+
+  // Inline page variant — rendered inside the AdminShell content area.
+  if (inline) {
+    return (
+      <div className="mx-auto max-w-6xl px-8 py-8">
+        <header className="mb-6">
+          <h1 className="font-heading text-2xl font-semibold text-[#14161A]">Settings</h1>
+          <p className="mt-1 text-sm text-[#6B7280]">Workspace preferences &amp; account</p>
+        </header>
+        {body}
+      </div>
+    );
+  }
+
+  // Modal variant — floating overlay opened from the profile menu.
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
@@ -57,53 +97,7 @@ export default function AdminSettings({ onClose }) {
             <X size={16} />
           </button>
         </div>
-
-        <div className="tile-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          <section className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white">
-              <ShieldCheck size={18} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-slate-800">
-                {user?.username || "Admin"}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                {user?.role || "admin"} account
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-            >
-              <LogOut size={13} />
-              Logout
-            </button>
-          </section>
-
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Bell size={12} /> Notifications
-            </h3>
-            <Toggle
-              label="Email alerts"
-              description="Notify me when a layout is published"
-              enabled={emailAlerts}
-              onChange={setEmailAlerts}
-            />
-          </section>
-
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Palette size={12} /> Publishing
-            </h3>
-            <Toggle
-              label="Auto-publish drafts"
-              description="Publish layouts immediately on save"
-              enabled={autoPublish}
-              onChange={setAutoPublish}
-            />
-          </section>
-        </div>
+        {body}
       </div>
     </div>
   );

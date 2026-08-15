@@ -3,7 +3,7 @@ import { useWorkspace } from "@/store/workspace.context.jsx";
 import { textureThumbnailUrl } from "@/lib/textures.js";
 
 export default function TileCard({ tile, onSelect, onApply }) {
-  const { surface } = useWorkspace();
+  const { surface, hasLayout } = useWorkspace();
   return (
     <div
       className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:shadow-card-hover hover:border-slate-300"
@@ -54,9 +54,15 @@ export default function TileCard({ tile, onSelect, onApply }) {
                 e.stopPropagation();
                 onApply();
               }}
-              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-slate-800"
+              disabled={!hasLayout}
+              title={hasLayout ? `Apply to ${surface}` : "Select a layout first to apply tiles"}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-white transition ${
+                hasLayout
+                  ? "bg-slate-900 hover:bg-slate-800"
+                  : "cursor-not-allowed bg-slate-300"
+              }`}
             >
-              <Layers size={10} /> Apply
+              <Layers size={10} /> {hasLayout ? "Apply" : "Select Layout"}
             </button>
             <button
               onClick={(e) => {

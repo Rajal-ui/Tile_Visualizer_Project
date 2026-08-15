@@ -91,12 +91,6 @@ export default function LayoutPicker({
               This room doesn&apos;t have any published layouts yet. Go back and pick
               another room, or ask an admin to publish a layout.
             </p>
-            <button
-              onClick={onBack}
-              className="mt-3 flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
-            >
-              <ArrowLeft size={13} /> Back to room selection
-            </button>
           </div>
         ) : (
           <>

@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
-import { DoorOpen, MonitorPlay, X, RotateCcw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { MonitorPlay, X, RotateCcw } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
-import RoomSelectModal from "@/features/rooms/components/RoomSelectModal.jsx";
 import LayoutPicker from "@/features/rooms/components/LayoutPicker.jsx";
 import { useLayoutsByRoom } from "@/features/rooms/hooks/useLayoutsByRoom.js";
 import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
 import ProfileDropdown from "@/components/ProfileDropdown.jsx";
-import LayoutsPage from "@/features/layouts/pages/LayoutsPage.jsx";
 
 export default function Dashboard() {
   const { resetAll, layoutId, setRoom, setLayout } = useWorkspace();
+  const navigate = useNavigate();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
-  const [showLayouts, setShowLayouts] = useState(false);
-  const [showRoomModal, setShowRoomModal] = useState(false);
 
   // Step 2 (layout picker) — shared by the room pills and the Select Room modal.
   const [pickerRoom, setPickerRoom] = useState(null);
@@ -93,7 +91,7 @@ export default function Dashboard() {
               <RotateCcw size={14} />
               <span className="hidden md:inline">Reset</span>
             </button>
-            <ProfileDropdown onOpenLayouts={() => setShowLayouts(true)} />
+            <ProfileDropdown onOpenLayouts={() => navigate("/admin/layouts")} />
           </div>
         </div>
       </header>
@@ -102,13 +100,6 @@ export default function Dashboard() {
         {!present && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <RoomSelector onSelectRoom={handleRoomSelect} />
-            <button
-              onClick={() => setShowRoomModal(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600"
-            >
-              <DoorOpen size={14} />
-              Select Room
-            </button>
           </div>
         )}
 
@@ -157,12 +148,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {showRoomModal && (
-        <RoomSelectModal
-          onClose={() => setShowRoomModal(false)}
-          onSelectRoom={handleRoomSelect}
-        />
-      )}
       {pickerRoom && (
         <LayoutPicker
           room={pickerRoom}
@@ -176,7 +161,6 @@ export default function Dashboard() {
           onBack={closePicker}
         />
       )}
-      {showLayouts && <LayoutsPage onClose={() => setShowLayouts(false)} />}
     </div>
   );
 }

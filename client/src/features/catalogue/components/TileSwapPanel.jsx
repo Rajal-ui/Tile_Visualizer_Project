@@ -2,11 +2,8 @@ import { useMemo, useState } from "react";
 import { X, ChevronRight, Grid3X3 } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
-import {
-  isTileCompatibleWithSurface,
-  CATALOGUE_ZONE_TABS,
-} from "@/features/catalogue/lib/tile-adapter.js";
-import { textureThumbnailUrl, textureUrl } from "@/lib/textures.js";
+import { isTileCompatibleWithSurface } from "@/features/catalogue/lib/tile-adapter.js";
+import { textureThumbnailUrl } from "@/lib/textures.js";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileSwapPanel({ onOpenCatalogue }) {
@@ -18,20 +15,20 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
     activeTile,
     applyTile,
     removeTile,
-    catalogueZone,
-    setCatalogueZone,
+    hasLayout,
   } = useWorkspace();
   const { tiles: catalogueTiles } = useTiles();
   const [detail, setDetail] = useState(null);
 
-  // Zone filter: the active catalogue tab wins; otherwise fall back to the
-  // surface being edited so the existing per-surface guard still applies.
-  const roomTiles = useMemo(() => {
-    const activeZone = catalogueZone === "all" ? surface : catalogueZone;
-    return catalogueTiles.filter(
-      (t) => t.rooms.includes(room.id) && isTileCompatibleWithSurface(t, activeZone)
-    );
-  }, [catalogueTiles, room.id, surface, catalogueZone]);
+  // Quick swap lists tiles for the active surface tab (zone filter follows the
+  // surface being edited, since the surface tabs already cover floor/wall/counter).
+  const roomTiles = useMemo(
+    () =>
+      catalogueTiles.filter(
+        (t) => t.rooms.includes(room.id) && isTileCompatibleWithSurface(t, surface)
+      ),
+    [catalogueTiles, room.id, surface]
+  );
 
   const surfaceTabs = surfaces.map((s) => ({ key: s, label: s.toUpperCase() }));
 
@@ -91,37 +88,22 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
 
       {/* Quick Swap Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <p className="text-[9px] font-bold tracking-widest text-slate-400">QUICK SWAP</p>
+        <p className="text-[9px] font-bold tracking-widest text-slate-400">Quick Swap</p>
         <button
           onClick={onOpenCatalogue}
           className="flex items-center gap-0.5 text-[10px] font-medium text-amber-600/70 transition hover:text-amber-600"
         >
-          Full catalog <ChevronRight size={11} />
+          Browse Catalogue <ChevronRight size={11} />
         </button>
-      </div>
-
-      {/* Catalogue surface tabs — narrow the quick-swap list by zone */}
-      <div className="flex border-b border-slate-100">
-        {CATALOGUE_ZONE_TABS.map((tab) => {
-          const active = catalogueZone === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setCatalogueZone(tab.key)}
-              aria-pressed={active}
-              className={`relative flex-1 px-2 py-1.5 text-[9px] font-bold tracking-wider transition ${
-                active ? "text-brand-600" : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {tab.label}
-              {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" />}
-            </button>
-          );
-        })}
       </div>
 
       {/* Tile Grid */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
+        {!hasLayout && (
+          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] font-medium text-amber-700">
+            Select a layout first to apply tiles to this room.
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-2">
           {roomTiles.map((tile) => {
             const isActive = activeTile?.id === tile.id;
@@ -133,7 +115,10 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
                   e.preventDefault();
                   setDetail(tile);
                 }}
+                disabled={!hasLayout}
                 className={`group relative overflow-hidden rounded-lg transition ${
+                  !hasLayout ? "cursor-not-allowed opacity-40" : ""
+                } ${
                   isActive
                     ? "ring-2 ring-amber-500 ring-offset-1 ring-offset-white"
                     : "ring-1 ring-slate-200 hover:ring-slate-300"

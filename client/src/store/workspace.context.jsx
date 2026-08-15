@@ -59,11 +59,16 @@ export function WorkspaceProvider({ children }) {
 
   const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
 
+  // Applying a tile requires a selected layout — without one there is no
+  // room geometry to preview against.
   const applyTile = (tileId, surface) =>
-    setPrefs((p) => ({
-      ...p,
-      applied: { ...p.applied, [surface]: tileId },
-    }));
+    setPrefs((p) => {
+      if (!p.layoutId) return p;
+      return {
+        ...p,
+        applied: { ...p.applied, [surface]: tileId },
+      };
+    });
 
   const removeTile = (surface) =>
     setPrefs((p) => {
@@ -93,6 +98,7 @@ export function WorkspaceProvider({ children }) {
     setRoom,
     layoutId: prefs.layoutId,
     setLayout,
+    hasLayout: Boolean(prefs.layoutId),
     surfaces,
     surface: prefs.surface,
     setSurface,

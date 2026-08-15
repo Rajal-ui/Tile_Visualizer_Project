@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, Eye, EyeOff, CheckCircle2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { resetPassword } from "@/features/auth/services/auth.api.js";
 
-export default function ResetPassword({ token, onDone }) {
+export default function ResetPassword() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [token, setToken] = useState(searchParams.get("token") || "");
+
+  // Strip the token from the URL once captured so it is not left in history.
+  useEffect(() => {
+    if (searchParams.get("token")) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -57,7 +68,7 @@ export default function ResetPassword({ token, onDone }) {
             </span>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Digital tile catalogue &amp; visualizer console
+            Digital tile catalogue &amp; visualizer dashboard
           </p>
         </div>
 
@@ -76,7 +87,7 @@ export default function ResetPassword({ token, onDone }) {
               </div>
               <button
                 type="button"
-                onClick={onDone}
+                onClick={() => navigate("/login")}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700 active:scale-[0.99]"
               >
                 <ArrowLeft size={16} /> Back to Sign In
@@ -164,7 +175,7 @@ export default function ResetPassword({ token, onDone }) {
 
               <button
                 type="button"
-                onClick={onDone}
+                onClick={() => navigate("/login")}
                 className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-slate-700"
               >
                 <ArrowLeft size={14} /> Back to Sign In

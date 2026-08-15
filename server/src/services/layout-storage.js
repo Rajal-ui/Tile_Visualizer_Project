@@ -228,6 +228,22 @@ export class LayoutStorage {
     }));
   }
 
+  /**
+   * Deletes a layout permanently: removes the database record and deletes any
+   * stored asset files (including the legacy filesystem room directory).
+   * @param {string} roomId - The unique identifier of the room layout.
+   * @returns {Promise<boolean>}
+   * @throws {Error} If the layout is not found.
+   */
+  async deleteLayout(roomId) {
+    sanitizeRoomId(roomId);
+    await this._migrateLegacyLayouts();
+    const deleted = await Layout.findOneAndDelete({ id: roomId });
+    if (!deleted) throw new Error(`Layout not found: ${roomId}`);
+    await fs.rm(this.roomDir(roomId), { recursive: true, force: true });
+    return true;
+  }
+
   async writeAssetBuffer(roomId, kind, buffer, filename) {
     sanitizeRoomId(roomId);
     sanitizeFilename(filename);

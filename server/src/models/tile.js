@@ -10,6 +10,7 @@ const tileSchema = new mongoose.Schema(
     },
     tileImage: { type: String },
     thumbnailUrl: { type: String },
+    description: { type: String, default: "" },
     properties: {
       thickness: { type: String, default: "10mm" },
       tilesInBox: { type: Number, default: 4 },

@@ -4,11 +4,15 @@
  * Replaces the old single-quad-per-zone shape:
  *
  *   OLD: zones: [{ id, label, maskSrc, corners }]
- *   NEW: zones: [{ id, label, planes: [{ polygon, corners }] }]
+ *  NEW: zones: [{ id, label, planes: [{ polygon, corners }], allowedTiles }]
  *
  * A "plane" is one flat, tileable surface inside a zone. A zone can own multiple
  * planes (e.g. a bent / multi-segment wall), each with its own polygon boundary
  * and its own 4-corner perspective quad for the homography warp.
+ *
+ * `allowedTiles` is an optional list of tile catalogue ids the zone may use
+ * (admin convenience filter; the Rep-facing picker still honours each tile's
+ * `compatibleZones`). Empty / missing means "any tile".
  *
  * The polygon is the source of truth for clipping: the compositor rasterizes a
  * plane's polygon into an alpha mask at render time (with a 1-3px feathered
@@ -30,6 +34,7 @@
  *         planes: [
  *           { polygon: [[0,0],[100,0],[100,80],[0,80]], corners: [[0,0],[100,0],[100,80],[0,80]] },
  *         ],
+ *         allowedTiles: [],
  *       },
  *     ],
  *   }
@@ -75,9 +80,11 @@ export function createPlane({ polygon, corners = null }) {
  * @param {string}   opts.id    e.g. "floor" | "wall" | "counter"
  * @param {string}   opts.label Display label, e.g. "Floor"
  * @param {Object[]} [opts.planes] Plane definitions (default []).
+ * @param {string[]} [opts.allowedTiles] Tile catalogue ids permitted on this zone
+ *        (default [] = any tile).
  */
-export function createZone({ id, label, planes = [] }) {
-  return { id, label, planes };
+export function createZone({ id, label, planes = [], allowedTiles = [] }) {
+  return { id, label, planes, allowedTiles };
 }
 
 /**
@@ -159,6 +166,14 @@ export function validateLayout(room) {
           }
         }
       });
+
+      if (zone.allowedTiles != null) {
+        if (!Array.isArray(zone.allowedTiles)) {
+          errors.push(`${at}.allowedTiles must be an array of tile ids`);
+        } else if (!zone.allowedTiles.every((id) => typeof id === "string" && id.length > 0)) {
+          errors.push(`${at}.allowedTiles entries must be non-empty strings`);
+        }
+      }
     });
   }
 

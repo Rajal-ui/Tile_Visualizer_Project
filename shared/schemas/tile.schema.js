@@ -23,6 +23,7 @@ export const TileSchema = z.object({
   title: z.string().min(1, "Title is required"),
   category: MongoObjectId,
   tileImage: z.union([z.string().url(), z.string().startsWith("/")]).optional(),
+  description: z.string().optional(),
   properties: TilePropertiesSchema.default({}),
   size: z.string().optional(),
   material: z.string().optional(),

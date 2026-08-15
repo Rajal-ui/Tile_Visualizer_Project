@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Mail, ArrowLeft, Send, CheckCircle2, KeyRound } from "lucide-react";
 import { forgotPassword } from "@/features/auth/services/auth.api.js";
 
-export default function ForgotPassword({ onBack }) {
+export default function ForgotPassword() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +49,7 @@ export default function ForgotPassword({ onBack }) {
             </span>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Digital tile catalogue &amp; visualizer console
+            Digital tile catalogue &amp; visualizer dashboard
           </p>
         </div>
 
@@ -67,7 +69,7 @@ export default function ForgotPassword({ onBack }) {
               </div>
               <button
                 type="button"
-                onClick={onBack}
+                onClick={() => navigate("/login")}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700 active:scale-[0.99]"
               >
                 <ArrowLeft size={16} /> Back to Sign In
@@ -130,7 +132,7 @@ export default function ForgotPassword({ onBack }) {
 
               <button
                 type="button"
-                onClick={onBack}
+                onClick={() => navigate("/login")}
                 className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-slate-700"
               >
                 <ArrowLeft size={14} /> Back to Sign In

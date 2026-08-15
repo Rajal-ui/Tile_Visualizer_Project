@@ -131,7 +131,7 @@ PhotoViewer.displayName = "PhotoViewer";
 
 
 export default function Visualizer({ present = false, layoutId = null }) {
-  const { room, appliedTiles, setSurface, surfaces } = useWorkspace();
+  const { room, appliedTiles, setSurface, surfaces, surface } = useWorkspace();
   const layout = useLayout(layoutId || room.layout || null);
   const floorTile = appliedTiles["Floor"] || null;
   const [exportOpen, setExportOpen] = useState(false);
@@ -161,6 +161,7 @@ export default function Visualizer({ present = false, layoutId = null }) {
             layout={layout}
             appliedTiles={appliedTiles}
             onSelectZone={setSurface}
+            activeZone={surface}
           />
         ) : (
           <PhotoViewer ref={viewerRef} room={room} floorTile={floorTile} />

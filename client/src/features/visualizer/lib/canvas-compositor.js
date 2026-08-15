@@ -132,23 +132,58 @@ function applyPlane(ctx, plane, { baseImg, materialImg, W, H }) {
 }
 
 /**
+ * Draw a selection highlight over the active zone's polygons so the rep can
+ * see exactly which surface (floor/wall/counter/accent…) the current surface
+ * target maps to. Drawn last so the outline stays visible above furniture.
+ * Zones are matched by label — the same label surfaced by zone clicks.
+ */
+export function drawZoneHighlight(ctx, zones, activeLabel, W, H) {
+  if (!activeLabel) return;
+  const strokeWidth = Math.max(2, Math.round(W / 600));
+  const dash = [strokeWidth * 3, strokeWidth * 2];
+
+  for (const zone of zones) {
+    if (zone.label !== activeLabel) continue;
+    for (const plane of zone.planes || []) {
+      const pts = plane.polygon;
+      if (!pts || pts.length < 3) continue;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(245, 158, 11, 0.16)";
+      ctx.fill();
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = strokeWidth;
+      ctx.setLineDash(dash);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+/**
  * Composite a photo-based room layout on the 2-layer model.
  *
  * @param {string}       background    background.png (inpainted, furniture removed)
  * @param {string}       foreground    foreground.png (furniture/objects, drawn last)
  * @param {Array<Object>} zones        [{ id, label, planes: [{ polygon, corners }] }]
  * @param {Object}       appliedTiles  { [zoneLabel]: tile } — resolved per zone at render
+ * @param {string}       activeZone    optional zone label to highlight as the selected surface
  * @param {HTMLCanvasElement} canvas   target canvas
  *
  * Draw order:
  *   1. background — bare room photo (furniture/objects removed)
  *   2. warped + polygon-masked tile per plane — floor/wall/counter boundaries
  *   3. foreground — furniture/objects drawn on top, unconditionally
+ *   4. active-zone selection highlight (dashed outline + amber tint)
  *
  * Masks are rasterized from each plane's polygon at render time (source of
  * truth); foreground.png owns occlusion.
  */
-export async function compositeAllZones({ background, foreground, zones, appliedTiles, canvas }) {
+export async function compositeAllZones({ background, foreground, zones, appliedTiles, activeZone, canvas }) {
   const baseImg = await loadImageOptional(background, "background");
   if (!baseImg) return;
 
@@ -197,4 +232,7 @@ export async function compositeAllZones({ background, foreground, zones, applied
   if (fgImg) {
     ctx.drawImage(fgImg, 0, 0, W, H);
   }
+
+  // Layer 4: active-zone selection highlight (skipped when no zone is active)
+  drawZoneHighlight(ctx, zones, activeZone, W, H);
 }

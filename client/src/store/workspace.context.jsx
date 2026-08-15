@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getTile } from "@/features/catalogue/data/tiles.js";
+import { surfaceToZoneKey } from "@/features/catalogue/lib/tile-adapter.js";
 import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
 import { getRoom, rooms } from "@/features/rooms/data/rooms.jsx";
 import { useLayout } from "@/features/rooms/hooks/useLayout.js";
@@ -63,14 +64,15 @@ export function WorkspaceProvider({ children }) {
   };
 
   // Changing the active surface (surface tabs or a canvas zone click) also
-  // syncs the catalogue's zone tab when the surface maps to a known zone.
+  // syncs the catalogue's zone tab so the gallery contextual-filters to tiles
+  // compatible with the targeted surface.
   const setSurface = (surface) =>
     setPrefs((p) => {
-      const zone = String(surface).toLowerCase();
+      const zone = surfaceToZoneKey(surface);
       return {
         ...p,
         surface,
-        catalogueZone: KNOWN_ZONES.includes(zone) ? zone : p.catalogueZone,
+        catalogueZone: zone ?? p.catalogueZone,
       };
     });
 

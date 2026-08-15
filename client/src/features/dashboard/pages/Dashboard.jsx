@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { LogOut, MonitorPlay, X, RotateCcw } from "lucide-react";
-import { useAuth } from "@/features/auth/auth.context.jsx";
+import { DoorOpen, MonitorPlay, X, RotateCcw } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
+import RoomSelectModal from "@/features/rooms/components/RoomSelectModal.jsx";
 import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
-import LayoutsFab from "@/components/LayoutsFab.jsx";
+import ProfileDropdown from "@/components/ProfileDropdown.jsx";
 import LayoutsPage from "@/features/layouts/pages/LayoutsPage.jsx";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { resetAll, layoutId } = useWorkspace();
+  const { resetAll } = useWorkspace();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
   const [showLayouts, setShowLayouts] = useState(false);
+  const [showRoomModal, setShowRoomModal] = useState(false);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
@@ -35,10 +37,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:flex">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              {user.username}
-            </span>
             {!present ? (
               <button
                 onClick={() => setPresent(true)}
@@ -64,13 +62,7 @@ export default function Dashboard() {
               <RotateCcw size={14} />
               <span className="hidden md:inline">Reset</span>
             </button>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-            >
-              <LogOut size={14} />
-              Logout
-            </button>
+            <ProfileDropdown onOpenLayouts={() => setShowLayouts(true)} />
           </div>
         </div>
       </header>
@@ -79,6 +71,13 @@ export default function Dashboard() {
         {!present && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <RoomSelector />
+            <button
+              onClick={() => setShowRoomModal(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600"
+            >
+              <DoorOpen size={14} />
+              Select Room
+            </button>
           </div>
         )}
 
@@ -127,9 +126,8 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {showRoomModal && <RoomSelectModal onClose={() => setShowRoomModal(false)} />}
       {showLayouts && <LayoutsPage onClose={() => setShowLayouts(false)} />}
-
-      <LayoutsFab onOpenLayouts={() => setShowLayouts(true)} />
     </div>
   );
 }

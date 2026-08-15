@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import { useTileSearch } from "@/features/catalogue/hooks/useTileSearch.js";
 import { CATALOGUE_ZONE_TABS } from "@/features/catalogue/lib/tile-adapter.js";
@@ -14,9 +14,6 @@ export default function TileCatalogue() {
   const [detail, setDetail] = useState(null);
 
   const { tiles, isSearching } = useTileSearch({ q: query, zone: catalogueZone });
-
-  const activeZoneTab = CATALOGUE_ZONE_TABS.find((t) => t.key === catalogueZone);
-  const surfaceFiltered = Boolean(activeZoneTab && catalogueZone !== "all");
 
   const { finishes, materials } = useMemo(() => {
     const fin = [...new Set(tiles.map((t) => t.finish))].sort();
@@ -46,19 +43,6 @@ export default function TileCatalogue() {
             {displayed.length} of {tiles.length} tiles
           </p>
         </div>
-        {surfaceFiltered && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[9px] font-bold text-brand-700 ring-1 ring-brand-200">
-            Showing: {activeZoneTab.label} Tiles
-            <button
-              onClick={() => setCatalogueZone("all")}
-              aria-label="Show all tiles"
-              title="Show all tiles"
-              className="rounded-full p-0.5 text-brand-500 transition hover:bg-brand-100 hover:text-brand-700"
-            >
-              <X size={10} />
-            </button>
-          </span>
-        )}
       </div>
 
       {/* Surface tabs — match the visualizer's zone-selection metaphor */}

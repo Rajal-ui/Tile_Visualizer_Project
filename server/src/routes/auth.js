@@ -22,7 +22,7 @@ import { JWT_SECRET } from "../config/env.js";
 import { requireRole } from "../middleware/requireRole.js";
 
 const router = Router();
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 router.post("/register", requireAuth, requireRole("superadmin"), async (req, res) => {
   const check = validate(AdminSchema, req.body);
@@ -76,7 +76,13 @@ router.post("/login", authRateLimiter, async (req, res) => {
     }
 
     const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" });
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     
     res.json({ ok: true, user: admin.toJSON() });
   } catch (error) {

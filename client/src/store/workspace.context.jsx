@@ -12,6 +12,7 @@ const defaults = {
   roomId: "living-room",
   surface: "Floor",
   applied: {},
+  layoutId: null,
 };
 
 export function WorkspaceProvider({ children }) {
@@ -23,7 +24,7 @@ export function WorkspaceProvider({ children }) {
     return rooms.find((x) => x.id === prefs.roomId) || rooms[0];
   }, [prefs.roomId]);
 
-  const layout = useLayout(room?.layout || null);
+  const layout = useLayout(prefs.layoutId || room?.layout || null);
 
   // Photo-based rooms expose their zone labels (Floor/Wall/Counter...) as the
   // tileable surfaces; CSS rooms keep the default set.
@@ -35,8 +36,10 @@ export function WorkspaceProvider({ children }) {
   }, [layout]);
 
   const setRoom = (roomId) => {
-    setPrefs((p) => ({ ...p, roomId, surface: "Floor" }));
+    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null }));
   };
+
+  const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
 
   const setSurface = (surface) => setPrefs((p) => ({ ...p, surface }));
 
@@ -54,7 +57,7 @@ export function WorkspaceProvider({ children }) {
     });
 
   const resetAll = () =>
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {} });
+    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null });
 
   const appliedTiles = useMemo(() => {
     const map = {};
@@ -72,6 +75,8 @@ export function WorkspaceProvider({ children }) {
     room,
     roomId: prefs.roomId,
     setRoom,
+    layoutId: prefs.layoutId,
+    setLayout,
     surfaces,
     surface: prefs.surface,
     setSurface,

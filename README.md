@@ -58,3 +58,13 @@ and fill in real values. No `.env` files are committed.
 ## Documentation
 
 See `docs/` for the architecture, setup guide, project structure, and API reference.
+
+## Deployment
+
+| Service | URL | Platform |
+|---------|-----|----------|
+| Client (Production) | https://tile-visualizer-project-client-e52y.vercel.app | Vercel |
+| Client (Preview) | https://tile-visualizer-project-client-e52y-4oyhxy1il.vercel.app | Vercel |
+| API | https://tile-visualizer-project.onrender.com | Render |
+
+**Note:** The Vercel preview URL changes per deployment. The production URL is stable.

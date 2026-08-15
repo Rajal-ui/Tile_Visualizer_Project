@@ -10,7 +10,8 @@ import ProfileDropdown from "@/components/ProfileDropdown.jsx";
 import LayoutsPage from "@/features/layouts/pages/LayoutsPage.jsx";
 
 export default function Dashboard() {
-  const { resetAll } = useWorkspace();
+  const { user, logout } = useAuth();
+  const { resetAll, layoutId } = useWorkspace();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
   const [showLayouts, setShowLayouts] = useState(false);
@@ -88,7 +89,7 @@ export default function Dashboard() {
         >
           <div className={`flex flex-col ${present ? "min-h-[calc(100vh-140px)]" : "min-h-0 flex-1"}`}>
             <div className="min-h-0 flex-1">
-              <Visualizer present={present} />
+              <Visualizer present={present} layoutId={layoutId} />
             </div>
           </div>
 

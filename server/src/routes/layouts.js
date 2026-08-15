@@ -11,9 +11,10 @@ import { requireRole } from "../middleware/requireRole.js";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    res.json(await layoutStorage.listLayouts());
+    const { roomId, status } = req.query;
+    res.json(await layoutStorage.listLayouts({ roomId, status }));
   } catch (e) {
     res.status(500).json({ error: "Failed to list layouts", details: e.message });
   }

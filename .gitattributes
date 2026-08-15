@@ -1,0 +1,5 @@
+# Force LF line endings for the Docker entrypoint regardless of platform:
+# Windows autocrlf would add a CR, breaking the `#!/bin/sh` shebang in the
+# Linux container.
+docker/entrypoint.sh text eol=lf
+*.sh text eol=lf

@@ -92,13 +92,14 @@ const RoomCanvas = forwardRef((props, ref) => {
   }, [layout, zones, appliedTiles, activeZone]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
+    <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
       {/* Composite area */}
       <div className="relative min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50" data-active-zone={activeZone || ""}>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50">
         <canvas
           ref={canvasRef}
           onClick={handleCanvasClick}
-          className={`block h-full w-full object-contain ${onSelectZone && hasPlanes ? "cursor-pointer" : ""}`}
+          className={`block max-h-full max-w-full object-contain ${onSelectZone && hasPlanes ? "cursor-pointer" : ""}`}
         />
         {rendering && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">

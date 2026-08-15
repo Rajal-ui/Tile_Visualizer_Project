@@ -7,7 +7,7 @@ import { useLayout } from "@/features/rooms/hooks/useLayout.js";
 
 const WorkspaceContext = createContext(null);
 
-const PREFS_KEY = "tv_prefs";
+const PREFS_KEY = "tv_workspace_prefs";
 
 const defaults = {
   roomId: "living-room",
@@ -17,8 +17,30 @@ const defaults = {
   layoutId: null,
 };
 
+function loadStoredPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return { ...defaults, ...parsed };
+  } catch {
+    return defaults;
+  }
+}
+
+/** Zone keys the catalogue surface tabs can filter by. */
+const KNOWN_ZONES = ["floor", "wall", "counter"];
+
 export function WorkspaceProvider({ children }) {
-  const [prefs, setPrefs] = useState(defaults);
+  const [prefs, setPrefs] = useState(loadStoredPrefs);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+      console.warn("Failed to persist workspace prefs:", e);
+    }
+  }, [prefs]);
 
   const { tiles: catalogueTiles } = useTiles();
 
@@ -76,8 +98,12 @@ export function WorkspaceProvider({ children }) {
       return { ...p, applied };
     });
 
-  const resetAll = () =>
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null, catalogueZone: "all" });
+  const resetAll = () => {
+    try {
+      localStorage.removeItem(PREFS_KEY);
+    } catch {}
+    setPrefs(defaults);
+  };
 
   const appliedTiles = useMemo(() => {
     const map = {};

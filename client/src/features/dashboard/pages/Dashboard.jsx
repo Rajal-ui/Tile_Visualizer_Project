@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DoorOpen, MonitorPlay, X, RotateCcw } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
 import RoomSelectModal from "@/features/rooms/components/RoomSelectModal.jsx";
+import LayoutPicker from "@/features/rooms/components/LayoutPicker.jsx";
+import { useLayoutsByRoom } from "@/features/rooms/hooks/useLayoutsByRoom.js";
 import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
 import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
@@ -10,12 +12,42 @@ import ProfileDropdown from "@/components/ProfileDropdown.jsx";
 import LayoutsPage from "@/features/layouts/pages/LayoutsPage.jsx";
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const { resetAll, layoutId } = useWorkspace();
+  const { resetAll, layoutId, setRoom, setLayout } = useWorkspace();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
   const [showLayouts, setShowLayouts] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
+
+  // Step 2 (layout picker) — shared by the room pills and the Select Room modal.
+  const [pickerRoom, setPickerRoom] = useState(null);
+  const {
+    layouts: roomLayouts,
+    isLoading: layoutsLoading,
+    isError: layoutsError,
+  } = useLayoutsByRoom(pickerRoom?.id || null);
+
+  const closePicker = () => setPickerRoom(null);
+
+  const handleRoomSelect = (room) => {
+    if (!room) return;
+    setRoom(room.id);
+    setPickerRoom(room);
+  };
+
+  // Auto-advance when a room has exactly one published layout; skip the picker
+  // entirely if the layouts API fails (keeps the static seed fallback working).
+  useEffect(() => {
+    if (!pickerRoom) return;
+    if (layoutsLoading) return;
+    if (layoutsError) {
+      closePicker();
+      return;
+    }
+    if (roomLayouts.length === 1) {
+      setLayout(roomLayouts[0].id);
+      closePicker();
+    }
+  }, [pickerRoom, layoutsLoading, layoutsError, roomLayouts, setLayout]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
@@ -69,7 +101,7 @@ export default function Dashboard() {
       <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 px-4 py-2">
         {!present && (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <RoomSelector />
+            <RoomSelector onSelectRoom={handleRoomSelect} />
             <button
               onClick={() => setShowRoomModal(true)}
               className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-brand-300 hover:text-brand-600"
@@ -125,7 +157,25 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {showRoomModal && <RoomSelectModal onClose={() => setShowRoomModal(false)} />}
+      {showRoomModal && (
+        <RoomSelectModal
+          onClose={() => setShowRoomModal(false)}
+          onSelectRoom={handleRoomSelect}
+        />
+      )}
+      {pickerRoom && (
+        <LayoutPicker
+          room={pickerRoom}
+          layouts={roomLayouts}
+          isLoading={layoutsLoading}
+          isError={layoutsError}
+          onSelect={(layout) => {
+            setLayout(layout.id);
+            closePicker();
+          }}
+          onBack={closePicker}
+        />
+      )}
       {showLayouts && <LayoutsPage onClose={() => setShowLayouts(false)} />}
     </div>
   );

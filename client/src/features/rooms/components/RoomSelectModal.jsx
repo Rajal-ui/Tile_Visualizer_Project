@@ -87,8 +87,8 @@ function RoomSkeleton() {
   );
 }
 
-export default function RoomSelectModal({ onClose }) {
-  const { roomId, setRoom } = useWorkspace();
+export default function RoomSelectModal({ onClose, onSelectRoom }) {
+  const { roomId } = useWorkspace();
   const {
     data: roomsData,
     isLoading: roomsLoading,
@@ -111,10 +111,11 @@ export default function RoomSelectModal({ onClose }) {
   // Same resolution chain as RoomSelector: backend rooms win, then rooms
   // derived from category templates, then the static seed as a last resort.
   const rooms = useMemo(() => {
-    if (roomsSuccess) return roomsData || [];
+    if (roomsSuccess && roomsData && roomsData.length > 0) return roomsData;
 
-    if (categoriesSuccess) {
-      return roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
+    if (categoriesSuccess && categoriesData) {
+      const derived = roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
+      if (derived.length > 0) return derived;
     }
 
     return staticRooms;
@@ -129,7 +130,7 @@ export default function RoomSelectModal({ onClose }) {
   }, [rooms, activeCategory]);
 
   const handleSelect = (id) => {
-    setRoom(id);
+    onSelectRoom?.(rooms.find((r) => r.id === id));
     onClose();
   };
 

@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { MapPin, TriangleAlert } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import { useRooms } from "@/features/rooms/hooks/useRooms.js";
 import { useCategories } from "@/features/rooms/hooks/useCategories.js";
-import { useLayoutsByRoom } from "@/features/rooms/hooks/useLayoutsByRoom.js";
-import LayoutPicker from "@/features/rooms/components/LayoutPicker.jsx";
 import { rooms as staticRooms } from "@/features/rooms/data/rooms.jsx";
 import { normalizeRoom, roomIdsFromCategories } from "@/features/rooms/lib/room-adapter.js";
 
@@ -23,8 +21,13 @@ function RoomButtonSkeleton() {
   return <div className="h-9 w-32 shrink-0 animate-pulse rounded-xl bg-slate-200" />;
 }
 
-export default function RoomSelector() {
-  const { roomId, setRoom, setLayout } = useWorkspace();
+/**
+ * Rep-facing room selector (Step 1). Picking a room is delegated upward via
+ * `onSelectRoom(room)` so the parent owns the Step-2 published-layout picker —
+ * keeping pill clicks and the Room Select modal on the same flow.
+ */
+export default function RoomSelector({ onSelectRoom }) {
+  const { roomId } = useWorkspace();
   const {
     data: roomsData,
     isLoading: roomsLoading,
@@ -48,10 +51,11 @@ export default function RoomSelector() {
   //   3. The static seed is the last resort, used only when both sources
   //      errored, so offline previews keep working.
   const rooms = useMemo(() => {
-    if (roomsSuccess) return roomsData || [];
+    if (roomsSuccess && roomsData && roomsData.length > 0) return roomsData;
 
-    if (categoriesSuccess) {
-      return roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
+    if (categoriesSuccess && categoriesData) {
+      const derived = roomIdsFromCategories(categoriesData).map((id) => normalizeRoom({ id }));
+      if (derived.length > 0) return derived;
     }
 
     return staticRooms;
@@ -69,57 +73,6 @@ export default function RoomSelector() {
   // Wait for the primary fetch, and for the category fallback whenever the
   // rooms API errored, before committing to a room list.
   const waiting = roomsLoading || (roomsError && categoriesLoading);
-
-  // --- Step 2 (layout picker) flow -----------------------------------------
-  // Selecting a room kicks off a published-layout fetch. Exactly one layout
-  // auto-advances; zero shows the picker's empty state; two+ shows the gallery.
-  // If the layouts API fails we fall back to the static seed behaviour (skip
-  // the picker entirely) so offline previews keep working.
-  const [pendingRoomId, setPendingRoomId] = useState(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  const pendingRoom = useMemo(
-    () => rooms.find((r) => r.id === pendingRoomId) || null,
-    [rooms, pendingRoomId]
-  );
-
-  const {
-    layouts: roomLayouts,
-    isLoading: layoutsLoading,
-    isError: layoutsError,
-  } = useLayoutsByRoom(pendingRoomId);
-
-  const closePicker = () => {
-    setPendingRoomId(null);
-    setPickerOpen(false);
-  };
-
-  useEffect(() => {
-    if (!pendingRoomId || !pickerOpen) return;
-    if (layoutsLoading) return; // keep the picker in its skeleton state
-
-    if (layoutsError) {
-      // API unreachable → skip Step 2 and keep the static seed default.
-      console.warn(
-        "[RoomSelector] Layouts API unavailable, skipping layout picker:",
-        layoutsError?.message || layoutsError
-      );
-      closePicker();
-      return;
-    }
-
-    if (roomLayouts.length === 1) {
-      setLayout(roomLayouts[0].id); // single published layout → auto-advance
-      closePicker();
-    }
-    // 0 → empty state; >1 → gallery; both keep the picker open.
-  }, [pendingRoomId, pickerOpen, layoutsLoading, layoutsError, roomLayouts, setLayout]);
-
-  const handleSelectRoom = (roomIdToSelect) => {
-    setRoom(roomIdToSelect);
-    setPendingRoomId(roomIdToSelect);
-    setPickerOpen(true);
-  };
 
   if (waiting) {
     return (
@@ -144,7 +97,7 @@ export default function RoomSelector() {
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-1">
       <div className="flex items-center gap-3">
         <RoomsLabel />
         <div className="tile-scrollbar flex gap-2 overflow-x-auto pb-1">
@@ -154,7 +107,7 @@ export default function RoomSelector() {
             return (
               <button
                 key={room.id}
-                onClick={() => handleSelectRoom(room.id)}
+                onClick={() => onSelectRoom?.(room)}
                 className={`group flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition ${
                   active
                     ? "border-transparent bg-slate-900 text-white shadow-card"
@@ -173,19 +126,12 @@ export default function RoomSelector() {
         </div>
       </div>
 
-      {pickerOpen && pendingRoom && (
-        <LayoutPicker
-          room={pendingRoom}
-          layouts={roomLayouts}
-          isLoading={layoutsLoading}
-          isError={layoutsError}
-          onSelect={(layout) => {
-            setLayout(layout.id);
-            closePicker();
-          }}
-          onBack={closePicker}
-        />
+      {roomsError && (
+        <p className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-600">
+          <TriangleAlert size={12} />
+          Server unreachable — showing offline rooms.
+        </p>
       )}
-    </>
+    </div>
   );
 }

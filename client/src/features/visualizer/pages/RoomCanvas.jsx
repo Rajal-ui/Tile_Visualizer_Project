@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo, useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { compositeAllZones } from "@/features/visualizer/lib/canvas-compositor.js";
 import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
 
@@ -9,10 +9,15 @@ import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
  * a zone polygon reports the zone's label up through `onSelectZone` so the
  * active surface/catalogue tab can follow the rep's editing target.
  */
-export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
+const RoomCanvas = forwardRef((props, ref) => {
+  const { layout, appliedTiles, onSelectZone } = props;
   const canvasRef = useRef(null);
   const [rendering, setRendering] = useState(false);
   const [compositeError, setCompositeError] = useState(null);
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current,
+  }));
 
   const zones = useMemo(() => layout?.zones || [], [layout]);
 
@@ -126,4 +131,8 @@ export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
       </div>
     </div>
   );
-}
+});
+
+RoomCanvas.displayName = "RoomCanvas";
+
+export default RoomCanvas;

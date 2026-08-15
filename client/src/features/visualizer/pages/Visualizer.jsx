@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, forwardRef } from "react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import { useLayout } from "@/features/rooms/hooks/useLayout.js";
 import RoomCanvas from "@/features/visualizer/pages/RoomCanvas.jsx";
+import ExportModal from "@/features/visualizer/components/ExportModal.jsx";
 
 /**
  * RoomViewer — 3-layer CSS perspective tile visualizer.
@@ -58,7 +59,7 @@ function TileLayer({ tile, floor }) {
   );
 }
 
-function PhotoViewer({ room, floorTile }) {
+const PhotoViewer = forwardRef(({ room, floorTile }, ref) => {
   const [bgLoaded, setBgLoaded] = useState(false);
   const [bgError, setBgError] = useState(false);
 
@@ -79,7 +80,7 @@ function PhotoViewer({ room, floorTile }) {
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+    <div ref={ref} className="photo-viewer-container" style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
       {/* Layer 1: Background room photo */}
       <img
         src={room.bg}
@@ -124,28 +125,57 @@ function PhotoViewer({ room, floorTile }) {
       )}
     </div>
   );
-}
+});
+
+PhotoViewer.displayName = "PhotoViewer";
 
 
 export default function Visualizer({ present = false, layoutId = null }) {
-  const { room, appliedTiles, setSurface } = useWorkspace();
+  const { room, appliedTiles, setSurface, surfaces } = useWorkspace();
   const layout = useLayout(layoutId || room.layout || null);
   const floorTile = appliedTiles["Floor"] || null;
+  const [exportOpen, setExportOpen] = useState(false);
+  const viewerRef = useRef(null);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      {!present && (
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-slate-50 rounded-t-2xl">
+          <h1 className="text-lg font-semibold text-slate-900">
+            {room?.name || layout?.name || "Visualizer"}
+          </h1>
+          <button
+            onClick={() => setExportOpen(true)}
+            disabled={!layout && !room}
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export PDF
+          </button>
+        </div>
+      )}
       {/* Room viewer */}
       <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-100">
         {layout ? (
           <RoomCanvas
+            ref={viewerRef}
             layout={layout}
             appliedTiles={appliedTiles}
             onSelectZone={setSurface}
           />
         ) : (
-          <PhotoViewer room={room} floorTile={floorTile} />
+          <PhotoViewer ref={viewerRef} room={room} floorTile={floorTile} />
         )}
       </div>
+
+      <ExportModal
+        isOpen={exportOpen}
+        onClose={() => setExportOpen(false)}
+        room={room}
+        layout={layout}
+        appliedTiles={appliedTiles}
+        surfaces={surfaces}
+        viewerRef={viewerRef}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { Loader2 } from "lucide-react";
 
 const A4_WIDTH = 210;
 const A4_HEIGHT = 297;
@@ -8,23 +9,44 @@ const MARGIN = 20;
 const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 
 export default function ExportModal({ isOpen, onClose, room, layout, appliedTiles, surfaces, viewerRef }) {
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
+
   const captureCanvasRoom = useCallback(async () => {
-    const canvas = viewerRef.current?.querySelector("canvas");
+    const canvas =
+      viewerRef.current?.getCanvas?.() ||
+      (viewerRef.current instanceof HTMLElement ? viewerRef.current.querySelector("canvas") : null) ||
+      document.querySelector("canvas");
+
     if (!canvas) return null;
-    return canvas.toDataURL("image/png", 1.0);
+    try {
+      return canvas.toDataURL("image/png", 1.0);
+    } catch (e) {
+      console.warn("Canvas export fallback:", e);
+      return null;
+    }
   }, [viewerRef]);
 
   const captureCssRoom = useCallback(async () => {
-    const container = viewerRef.current?.querySelector(".photo-viewer-container");
+    const container =
+      (viewerRef.current instanceof HTMLElement ? viewerRef.current : null) ||
+      document.querySelector(".photo-viewer-container") ||
+      document.querySelector("[data-room-viewer]");
+
     if (!container) return null;
 
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#ffffff",
-    });
-    return canvas.toDataURL("image/png", 1.0);
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+      return canvas.toDataURL("image/png", 1.0);
+    } catch (e) {
+      console.warn("html2canvas export fallback:", e);
+      return null;
+    }
   }, [viewerRef]);
 
   const getRoomName = () => {
@@ -37,13 +59,13 @@ export default function ExportModal({ isOpen, onClose, room, layout, appliedTile
       if (tile) {
         specs.push({
           surface,
-          name: tile.name,
-          material: tile.material,
-          finish: tile.finish,
-          size: tile.size,
-          pattern: tile.pattern,
-          grout: tile.grout,
-          price: tile.price,
+          name: tile.title || tile.name || "Applied Tile",
+          material: tile.material || "Standard",
+          finish: tile.finish || "Standard",
+          size: tile.size || "Standard",
+          pattern: tile.pattern || "Grid",
+          grout: tile.grout || "Matching",
+          price: tile.price != null ? `₹${tile.price}/sq.ft` : "—",
         });
       }
     }
@@ -51,87 +73,96 @@ export default function ExportModal({ isOpen, onClose, room, layout, appliedTile
   };
 
   const generatePdf = useCallback(async () => {
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
+    setGenerating(true);
+    setError(null);
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-    let y = MARGIN;
+      let y = MARGIN;
 
-    pdf.setFontSize(24);
-    pdf.setTextColor(30, 41, 59);
-    pdf.text("Tile Visualizer — Presentation Board", MARGIN, y);
-    y += 10;
-
-    pdf.setFontSize(14);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text(`${getRoomName()} — ${new Date().toLocaleDateString()}`, MARGIN, y);
-    y += 15;
-
-    const imgData = layout
-      ? await captureCanvasRoom()
-      : await captureCssRoom();
-
-    if (imgData) {
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
-      const maxImgHeight = A4_HEIGHT - y - MARGIN - 80;
-      const finalHeight = Math.min(imgHeight, maxImgHeight);
-
-      pdf.addImage(imgData, "PNG", MARGIN, y, CONTENT_WIDTH, finalHeight);
-      y += finalHeight + 10;
-    }
-
-    const specs = getTileSpecs();
-    if (specs.length > 0) {
-      pdf.setFontSize(16);
+      pdf.setFontSize(22);
       pdf.setTextColor(30, 41, 59);
-      pdf.text("Applied Tiles", MARGIN, y);
-      y += 10;
+      pdf.text("Tile Visualizer — Presentation Board", MARGIN, y);
+      y += 9;
 
-      for (const spec of specs) {
-        if (y > A4_HEIGHT - 30) {
-          pdf.addPage();
-          y = MARGIN;
+      pdf.setFontSize(13);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`${getRoomName()} — ${new Date().toLocaleDateString()}`, MARGIN, y);
+      y += 12;
+
+      const imgData = (await captureCanvasRoom()) || (await captureCssRoom());
+
+      if (imgData) {
+        try {
+          const imgProps = pdf.getImageProperties(imgData);
+          const imgHeight = (imgProps.height * CONTENT_WIDTH) / imgProps.width;
+          const maxImgHeight = A4_HEIGHT - y - MARGIN - 80;
+          const finalHeight = Math.min(imgHeight, maxImgHeight);
+
+          pdf.addImage(imgData, "PNG", MARGIN, y, CONTENT_WIDTH, finalHeight);
+          y += finalHeight + 10;
+        } catch (imgErr) {
+          console.warn("Could not embed image into PDF:", imgErr);
         }
-
-        pdf.setFontSize(12);
-        pdf.setTextColor(51, 65, 85);
-        pdf.text(`${spec.surface}: ${spec.name}`, MARGIN, y);
-        y += 6;
-
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 116, 139);
-        const details = [
-          `Material: ${spec.material}`,
-          `Finish: ${spec.finish}`,
-          `Size: ${spec.size}`,
-          `Pattern: ${spec.pattern}`,
-          `Grout: ${spec.grout}`,
-          `Price: ₹${spec.price}/sq.ft`,
-        ];
-        for (const detail of details) {
-          pdf.text(detail, MARGIN + 5, y);
-          y += 5;
-        }
-        y += 4;
       }
+
+      const specs = getTileSpecs();
+      if (specs.length > 0) {
+        pdf.setFontSize(15);
+        pdf.setTextColor(30, 41, 59);
+        pdf.text("Applied Tiles", MARGIN, y);
+        y += 8;
+
+        for (const spec of specs) {
+          if (y > A4_HEIGHT - 35) {
+            pdf.addPage();
+            y = MARGIN;
+          }
+
+          pdf.setFontSize(11);
+          pdf.setTextColor(51, 65, 85);
+          pdf.text(`${spec.surface}: ${spec.name}`, MARGIN, y);
+          y += 5.5;
+
+          pdf.setFontSize(9.5);
+          pdf.setTextColor(100, 116, 139);
+          const details = [
+            `Material: ${spec.material}`,
+            `Finish: ${spec.finish}`,
+            `Size: ${spec.size}`,
+            `Price: ${spec.price}`,
+          ];
+          for (const detail of details) {
+            pdf.text(detail, MARGIN + 4, y);
+            y += 4.5;
+          }
+          y += 3;
+        }
+      }
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text(
+        "Generated by Tile Visualizer — Presentation Export",
+        A4_WIDTH / 2,
+        A4_HEIGHT - 10,
+        { align: "center" }
+      );
+
+      const fileName = `${getRoomName().toLowerCase().replace(/\s+/g, "-")}-presentation-${Date.now()}.pdf`;
+      pdf.save(fileName);
+      onClose();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      setError(err.message || "Failed to generate PDF. Please try again.");
+    } finally {
+      setGenerating(false);
     }
-
-    pdf.setFontSize(8);
-    pdf.setTextColor(148, 163, 184);
-    pdf.text(
-      "Generated by Tile Visualizer — Internal tool for sales team",
-      A4_WIDTH / 2,
-      A4_HEIGHT - 10,
-      { align: "center" }
-    );
-
-    const fileName = `${getRoomName().toLowerCase().replace(/\s+/g, "-")}-presentation-${Date.now()}.pdf`;
-    pdf.save(fileName);
-    onClose();
-  }, [captureCanvasRoom, captureCssRoom, layout, room, appliedTiles]);
+  }, [captureCanvasRoom, captureCssRoom, layout, room, appliedTiles, onClose]);
 
   if (!isOpen) return null;
 
@@ -163,6 +194,12 @@ export default function ExportModal({ isOpen, onClose, room, layout, appliedTile
           </button>
         </div>
 
+        {error && (
+          <div className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-3 text-sm text-slate-600">
           <p>Generate a PDF presentation board with the current room visualization and applied tile specifications.</p>
 
@@ -175,15 +212,18 @@ export default function ExportModal({ isOpen, onClose, room, layout, appliedTile
         <div className="mt-6 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            disabled={generating}
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={generatePdf}
-            className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            disabled={generating}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           >
-            Download PDF
+            {generating && <Loader2 size={15} className="animate-spin" />}
+            {generating ? "Generating…" : "Download PDF"}
           </button>
         </div>
       </div>

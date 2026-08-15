@@ -98,9 +98,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 px-4 py-2">
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 min-h-0 flex-col gap-2 px-4 py-2 overflow-hidden">
         {!present && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
             <RoomSelector onSelectRoom={handleRoomSelect} />
             <LayoutSwitcher
               layouts={roomLayouts}
@@ -113,20 +113,20 @@ export default function Dashboard() {
         )}
 
         <div
-          className={`grid flex-1 gap-4 ${
+          className={`grid flex-1 min-h-0 gap-4 overflow-hidden ${
             present
               ? "grid-cols-1"
               : "grid-cols-1 lg:grid-cols-[1fr_300px]"
           }`}
         >
-          <div className={`flex flex-col ${present ? "min-h-[calc(100vh-140px)]" : "min-h-0 flex-1"}`}>
-            <div className="min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-hidden">
               <Visualizer present={present} layoutId={layoutId} />
             </div>
           </div>
 
           {!present && (
-            <div className="min-h-0 lg:max-h-[calc(100vh-120px)]">
+            <div className="flex min-h-0 flex-col overflow-hidden">
               <TileSwapPanel onOpenCatalogue={() => setShowCatalogue(true)} />
             </div>
           )}

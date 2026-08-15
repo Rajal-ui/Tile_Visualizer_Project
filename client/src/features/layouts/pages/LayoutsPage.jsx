@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ChevronDown, LayoutGrid, Plus, Settings, TriangleAlert, X } from "lucide-react";
-import { fetchLayouts, saveLayout } from "@/services/layouts.api.js";
-import { createRoom, createZone } from "@shared/schemas/layout.js";
+import { useEffect, useState } from "react";
+import { ArrowLeft, ChevronDown, LayoutGrid, Plus, Settings, TriangleAlert } from "lucide-react";
+import { fetchLayouts } from "@/services/layouts.api.js";
 import LayoutEditor from "@/features/layouts/pages/LayoutEditor.jsx";
+import NewLayoutWizard from "@/features/layouts/components/NewLayoutWizard.jsx";
 import TileAdmin from "@/features/admin/pages/TileAdmin.jsx";
 import AdminSettings from "@/components/AdminSettings.jsx";
 
@@ -27,9 +27,7 @@ export default function LayoutsPage({ onClose }) {
   const [layouts, setLayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
-  const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notice, setNotice] = useState(null);
 
@@ -55,40 +53,20 @@ export default function LayoutsPage({ onClose }) {
     };
   }, []);
 
-  const selected = useMemo(
-    () => layouts.find((l) => l.id === selectedId) || null,
-    [layouts, selectedId]
-  );
-
-  const createLayout = async () => {
-    const name = newName.trim();
-    if (!name || creating) return;
-    setCreating(true);
+  // The wizard persists a draft layout server-side before handing off, so on
+  // launch we only need to select it and refresh the header's selector list.
+  const handleWizardLaunch = async (layoutId) => {
+    setShowWizard(false);
+    setSelectedId(layoutId);
+    setNotice({
+      type: "success",
+      text: "Draft layout created — draw zone polygons, then save or publish.",
+    });
     try {
-      const id = slugify(name) || `layout-${Date.now()}`;
-      const config = createRoom({
-        id,
-        name,
-        zones: [
-          createZone({ id: "floor", label: "Floor" }),
-          createZone({ id: "wall", label: "Wall" }),
-          createZone({ id: "counter", label: "Counter" }),
-        ],
-      });
-      const result = await saveLayout(id, config);
-      const created = result?.layout || config;
-      setLayouts((prev) => {
-        const next = prev.filter((l) => l.id !== created.id);
-        return [...next, created];
-      });
-      setSelectedId(created.id);
-      setNewName("");
-      setShowNew(false);
-      setNotice({ type: "success", text: `Layout "${created.name}" created as draft.` });
-    } catch (e) {
-      setNotice({ type: "error", text: e.message || "Failed to create layout." });
-    } finally {
-      setCreating(false);
+      const list = await fetchLayouts();
+      setLayouts(Array.isArray(list) ? list : []);
+    } catch {
+      // The draft is already saved; refreshing the selector is best-effort.
     }
   };
 
@@ -170,7 +148,7 @@ export default function LayoutsPage({ onClose }) {
 
         {tab === "layouts" && (
           <button
-            onClick={() => setShowNew(true)}
+            onClick={() => setShowWizard(true)}
             className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-emerald-400"
           >
             <Plus size={14} /> New Layout
@@ -211,55 +189,8 @@ export default function LayoutsPage({ onClose }) {
         )}
       </div>
 
-      {/* New Layout modal */}
-      {showNew && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
-          onClick={() => setShowNew(false)}
-        >
-          <div
-            className="animate-modal-in w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">New Layout</h2>
-              <button
-                onClick={() => setShowNew(false)}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X size={15} />
-              </button>
-            </div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Layout name
-            </label>
-            <input
-              autoFocus
-              className="input-field w-full text-xs"
-              placeholder="e.g. Kitchen IRIDIUM"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") createLayout();
-              }}
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setShowNew(false)}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createLayout}
-                disabled={!newName.trim() || creating}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
-              >
-                <Plus size={13} /> {creating ? "Creating…" : "Create draft"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showWizard && (
+        <NewLayoutWizard onClose={() => setShowWizard(false)} onLaunch={handleWizardLaunch} />
       )}
 
       {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}

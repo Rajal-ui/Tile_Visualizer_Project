@@ -62,7 +62,7 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
           APPLIED TO {surface.toUpperCase()}
         </p>
         {activeTile ? (
-          <div className="flex items-center gap-2.5">
+          <div data-testid="applied-tile" className="flex items-center gap-2.5">
             <div
               className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 bg-cover bg-center"
               style={{ backgroundImage: `url(${textureThumbnailUrl(activeTile)})` }}

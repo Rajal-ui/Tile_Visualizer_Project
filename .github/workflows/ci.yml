@@ -6,6 +6,8 @@
 #   frontend  -> client/**            (runs the Vite production build)
 #   backend   -> server/**, shared/** (runs the node:test suite)
 #   database  -> migrations / *.sql   (data-layer schema validation)
+#   e2e       -> tests/e2e/**, Playwright + Docker config
+#                                    (Playwright sales-demo flow)
 #   chore     -> docs, scripts, tests, .github, root config (lockfile + doc-link checks)
 #
 # The `quality-gate` job is a stable status check: add it as a REQUIRED check in
@@ -67,6 +69,12 @@ jobs:
               - 'package-lock.json'
               - '.gitignore'
               - '.env.example'
+            e2e:
+              - 'tests/e2e/**'
+              - 'playwright.config.ts'
+              - 'Dockerfile'
+              - 'docker-compose.yml'
+              - 'docker/**'
 
       - name: Build category matrix and labels
         id: categories
@@ -82,6 +90,7 @@ jobs:
           [ "${{ steps.filter.outputs.frontend }}" == "true" ] && add frontend
           [ "${{ steps.filter.outputs.backend }}" == "true" ] && add backend
           [ "${{ steps.filter.outputs.database }}" == "true" ] && add database
+          [ "${{ steps.filter.outputs.e2e }}" == "true" ] && add e2e
           [ "${{ steps.filter.outputs.chore }}" == "true" ] && add chore
           # A PR that matches no filter still gets the chore checks.
           if [ "$matrix" == "[]" ]; then
@@ -133,6 +142,13 @@ jobs:
       - name: Install workspace dependencies
         run: npm ci
 
+      - name: Cache Playwright browsers
+        if: matrix.category == 'e2e'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
       - name: Frontend - production build
         if: matrix.category == 'frontend'
         run: npm run build
@@ -140,6 +156,14 @@ jobs:
       - name: Backend - unit and integration tests
         if: matrix.category == 'backend'
         run: npm test
+
+      - name: E2E - install Playwright browser
+        if: matrix.category == 'e2e'
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E - sales-demo flow (Playwright)
+        if: matrix.category == 'e2e'
+        run: npm run test:e2e
 
       - name: Database / data layer - schema validation
         if: matrix.category == 'database'

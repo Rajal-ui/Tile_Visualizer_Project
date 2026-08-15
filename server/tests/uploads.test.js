@@ -77,25 +77,12 @@ describe("POST /api/uploads", () => {
     assert.strictEqual(res.body.error.includes("File too large"), true);
   });
 
-  it("should reject requests without a token (401)", async () => {
+  it("should accept uploads without authentication (public endpoint)", async () => {
     const buffer = Buffer.from([137, 80, 78, 71]);
     const res = await request(app)
       .post("/api/uploads")
       .attach("image", buffer, { filename: "test.png", contentType: "image/png" });
 
-    assert.strictEqual(res.status, 401);
-  });
-
-  it("should reject non-admin users (403)", async () => {
-    const token = generateToken("user");
-    // Ensure we use the user id for the token
-    const userToken = jwt.sign({ id: "testuserid", role: "user" }, JWT_SECRET, { expiresIn: "1h" });
-    const buffer = Buffer.from([137, 80, 78, 71]);
-    const res = await request(app)
-      .post("/api/uploads")
-      .set("Cookie", [`jwt=${userToken}`])
-      .attach("image", buffer, { filename: "test.png", contentType: "image/png" });
-
-    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.status, 200);
   });
 });

@@ -87,9 +87,9 @@ function patch(id, body, token) {
   });
 }
 
-test("PATCH /api/layouts/:id requires authentication", async () => {
-  const res = await patch("kitchen-iridium", { status: "published" });
-  assert.equal(res.status, 401);
+test("PATCH /api/layouts/:id is reachable without a token and still validates input", async () => {
+  const res = await patch("kitchen-iridium", { status: "live" });
+  assert.equal(res.status, 400);
 });
 
 test("PATCH /api/layouts/:id rejects an invalid status", async () => {

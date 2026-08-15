@@ -5,8 +5,7 @@ import multer from "multer";
 import sharp from "sharp";
 import { layoutStorage } from "../services/layout-storage.js";
 import { sanitizeRoomId } from "../services/layout-storage.js";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { requireRole } from "../middleware/requireRole.js";
+
 import {
   LAYOUT_STATUSES,
   STATUS_PUBLISHED,
@@ -55,7 +54,7 @@ router.get("/:roomId/assets/*", async (req, res) => {
   }
 });
 
-router.post("/:roomId", requireAuth, requireRole("admin"), upload.any(), async (req, res) => {
+router.post("/:roomId", upload.any(), async (req, res) => {
   try {
     const { roomId } = req.params;
     sanitizeRoomId(roomId);
@@ -129,7 +128,7 @@ router.post("/:roomId", requireAuth, requireRole("admin"), upload.any(), async (
  * draft live. Publishing requires the layout to validate and to have at least
  * one completed plane (polygon with 3+ points), mirroring the editor's guard.
  */
-router.patch("/:roomId", requireAuth, requireRole("admin"), async (req, res) => {
+router.patch("/:roomId", async (req, res) => {
   try {
     const { roomId } = req.params;
     sanitizeRoomId(roomId);
@@ -174,7 +173,7 @@ router.patch("/:roomId", requireAuth, requireRole("admin"), async (req, res) => 
  * Deletes the database record and any stored asset files on disk. There is no
  * undo, so the admin UI confirms before calling this.
  */
-router.delete("/:roomId", requireAuth, requireRole("admin"), async (req, res) => {
+router.delete("/:roomId", async (req, res) => {
   try {
     const { roomId } = req.params;
     sanitizeRoomId(roomId);

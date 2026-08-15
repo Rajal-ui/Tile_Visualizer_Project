@@ -96,6 +96,7 @@ export function WorkspaceProvider({ children }) {
     room,
     roomId: prefs.roomId,
     setRoom,
+    layout,
     layoutId: prefs.layoutId,
     setLayout,
     hasLayout: Boolean(prefs.layoutId),

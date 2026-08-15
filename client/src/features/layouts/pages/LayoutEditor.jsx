@@ -21,6 +21,7 @@ import {
   validateLayout,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
+  ZONE_TYPES,
 } from "@shared/schemas/layout.js";
 import { dist, distToSegment } from "@/features/layouts/lib/geometry.js";
 import TilePickerModal from "@/features/layouts/components/TilePickerModal.jsx";
@@ -180,24 +181,34 @@ export default function LayoutEditor({
   };
 
   const setPlane = (planeIndex, next) => {
-    if (!activeZone) return;
-    const zoneId = activeZone.id;
-    setLayout((prev) => ({
-      ...prev,
-      zones: prev.zones.map((z) =>
-        z.id === zoneId
-          ? { ...z, planes: z.planes.map((p, i) => (i === planeIndex ? next : p)) }
-          : z
-      ),
-    }));
+    if (!activeZoneId) return;
+    setLayout((prev) => {
+      if (!prev?.zones) return prev;
+      return {
+        ...prev,
+        zones: prev.zones.map((z) => {
+          if (z.id === activeZoneId) {
+            const planes = z.planes || [];
+            return {
+              ...z,
+              planes: planes.map((p, i) => (i === planeIndex ? next : p)),
+            };
+          }
+          return z;
+        }),
+      };
+    });
   };
 
   /** Patch fields (label, allowedTiles, …) on a zone in the working config. */
   const updateZone = (zoneId, patch) => {
-    setLayout((prev) => ({
-      ...prev,
-      zones: prev.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)),
-    }));
+    setLayout((prev) => {
+      if (!prev?.zones) return prev;
+      return {
+        ...prev,
+        zones: prev.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)),
+      };
+    });
   };
 
   /** Scale every plane polygon in a zone so its bounding box matches `nextW`/`nextH`. */
@@ -267,11 +278,22 @@ export default function LayoutEditor({
       ]);
       if (cancelled) return;
 
+      const initialZones =
+        cfg.zones && cfg.zones.length > 0
+          ? cfg.zones
+          : [
+              { id: "floor", label: "Floor", planes: [], allowedTiles: [] },
+              { id: "wall", label: "Wall", planes: [], allowedTiles: [] },
+              { id: "counter", label: "Counter", planes: [], allowedTiles: [] },
+            ];
+      cfg = { ...cfg, zones: initialZones };
+
       setLayout(cfg);
       baseImgRef.current = base;
       fgImgRef.current = fg;
-      setActiveZoneId(cfg.zones?.[0]?.id || null);
-      setActivePlaneIndex(cfg.zones?.[0]?.planes?.length ? 0 : -1);
+      const initialZoneId = initialZones[0]?.id || "floor";
+      setActiveZoneId(initialZoneId);
+      setActivePlaneIndex(initialZones[0]?.planes?.length ? 0 : -1);
       setApiDown(apiUnreachable);
       setNotice(
         apiUnreachable
@@ -325,8 +347,29 @@ export default function LayoutEditor({
   };
 
   const addPolygonPoint = (x, y) => {
+    const pt = [Math.round(x), Math.round(y)];
+
+    // If no active plane exists, auto-create one with this point
+    if (!activePlane || activePlaneIndex < 0) {
+      if (!activeZoneId) return;
+      setLayout((prev) => {
+        if (!prev) return prev;
+        const zones = prev.zones || [];
+        const targetZone = zones.find((z) => z.id === activeZoneId);
+        const planes = targetZone?.planes || [];
+        const nextPlanes = [...planes, { polygon: [pt], corners: null }];
+        setActivePlaneIndex(planes.length);
+        return {
+          ...prev,
+          zones: zones.map((z) =>
+            z.id === activeZoneId ? { ...z, planes: nextPlanes } : z
+          ),
+        };
+      });
+      return;
+    }
+
     const plane = activePlane;
-    if (!plane) return;
     const poly = plane.polygon || [];
 
     if (poly.length >= 3 && dist([x, y], poly[0]) <= CLOSE_HIT) return;
@@ -334,14 +377,14 @@ export default function LayoutEditor({
     const edge = hitEdge([x, y]);
     if (edge != null && poly.length >= 3) {
       const next = [...poly];
-      next.splice((edge + 1) % poly.length, 0, [Math.round(x), Math.round(y)]);
+      next.splice((edge + 1) % poly.length, 0, pt);
       setPlane(activePlaneIndex, { ...plane, polygon: next });
       return;
     }
 
     setPlane(activePlaneIndex, {
       ...plane,
-      polygon: [...poly, [Math.round(x), Math.round(y)]],
+      polygon: [...poly, pt],
     });
   };
 
@@ -397,30 +440,52 @@ export default function LayoutEditor({
   };
 
   const addPlane = () => {
-    if (!activeZone) return;
-    const planes = activeZone.planes || [];
-    setLayout((prev) => ({
-      ...prev,
-      zones: prev.zones.map((z) =>
-        z.id === activeZone.id
-          ? { ...z, planes: [...planes, { polygon: [], corners: null }] }
-          : z
-      ),
-    }));
-    setActivePlaneIndex(planes.length);
+    setMode("polygon");
+    setLayout((prev) => {
+      if (!prev) return prev;
+      let zones = prev.zones || [];
+      if (!zones.length) {
+        zones = [
+          { id: "floor", label: "Floor", planes: [], allowedTiles: [] },
+          { id: "wall", label: "Wall", planes: [], allowedTiles: [] },
+          { id: "counter", label: "Counter", planes: [], allowedTiles: [] },
+        ];
+      }
+      const targetZoneId = activeZoneId || zones[0]?.id || "floor";
+      if (!activeZoneId) {
+        setActiveZoneId(targetZoneId);
+      }
+      const targetZone = zones.find((z) => z.id === targetZoneId);
+      const currentPlanes = targetZone?.planes || [];
+      const newPlaneIndex = currentPlanes.length;
+      setActivePlaneIndex(newPlaneIndex);
+
+      return {
+        ...prev,
+        zones: zones.map((z) =>
+          z.id === targetZoneId
+            ? { ...z, planes: [...(z.planes || []), { polygon: [], corners: null }] }
+            : z
+        ),
+      };
+    });
   };
 
   const deletePlane = () => {
-    if (!activeZone || activePlaneIndex < 0) return;
-    const planes = activeZone.planes || [];
-    const next = planes.filter((_, i) => i !== activePlaneIndex);
-    setLayout((prev) => ({
-      ...prev,
-      zones: prev.zones.map((z) =>
-        z.id === activeZone.id ? { ...z, planes: next } : z
-      ),
-    }));
-    setActivePlaneIndex(next.length ? Math.max(0, activePlaneIndex - 1) : -1);
+    if (!activeZoneId || activePlaneIndex < 0) return;
+    setLayout((prev) => {
+      if (!prev?.zones) return prev;
+      const targetZone = prev.zones.find((z) => z.id === activeZoneId);
+      const planes = targetZone?.planes || [];
+      const next = planes.filter((_, i) => i !== activePlaneIndex);
+      setActivePlaneIndex(next.length ? Math.max(0, activePlaneIndex - 1) : -1);
+      return {
+        ...prev,
+        zones: prev.zones.map((z) =>
+          z.id === activeZoneId ? { ...z, planes: next } : z
+        ),
+      };
+    });
   };
 
   const persist = async (status) => {
@@ -443,7 +508,7 @@ export default function LayoutEditor({
               corners: (p.polygon || []).length === 4 ? p.polygon.map((pt) => [...pt]) : null,
             })),
         }))
-        .filter((zone) => zone.planes.length > 0);
+        .filter((zone) => (status === STATUS_PUBLISHED ? zone.planes.length > 0 : true));
 
       const config = { ...layout, zones, status };
 
@@ -757,7 +822,9 @@ export default function LayoutEditor({
             <div className="flex h-full min-h-[300px] items-center justify-center p-6">
               <canvas
                 ref={canvasRef}
-                className="max-h-full max-w-full rounded-lg"
+                className={`max-h-full max-w-full rounded-lg ${
+                  mode === "polygon" ? "cursor-crosshair" : "cursor-move"
+                }`}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -958,9 +1025,22 @@ export default function LayoutEditor({
                     );
                   })}
                   {!activeZone?.planes?.length && (
-                    <p className="rounded-lg border border-dashed border-[#E7E9EE] px-3 py-4 text-center text-xs text-[#6B7280]">
-                      No planes yet — click "+ Plane" to add one.
-                    </p>
+                    <button
+                      onClick={addPlane}
+                      type="button"
+                      className="rounded-lg border border-dashed border-[#E7E9EE] px-3 py-4 text-center text-xs font-semibold text-[#6D5EF5] transition hover:border-[#6D5EF5] hover:bg-[#6D5EF5]/5"
+                    >
+                      + Add Plane to start drawing
+                    </button>
+                  )}
+                  {activeZone?.planes?.length > 0 && (
+                    <button
+                      onClick={addPlane}
+                      type="button"
+                      className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#E7E9EE] px-3 py-2 text-xs font-semibold text-[#6D5EF5] transition hover:border-[#6D5EF5] hover:bg-[#6D5EF5]/5"
+                    >
+                      <Plus size={12} /> Add Plane
+                    </button>
                   )}
                 </div>
               </div>

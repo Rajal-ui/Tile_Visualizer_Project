@@ -4,6 +4,7 @@ import { MonitorPlay, X, RotateCcw } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import RoomSelector from "@/features/rooms/components/RoomSelector.jsx";
 import LayoutPicker from "@/features/rooms/components/LayoutPicker.jsx";
+import LayoutSwitcher from "@/features/rooms/components/LayoutSwitcher.jsx";
 import { useLayoutsByRoom } from "@/features/rooms/hooks/useLayoutsByRoom.js";
 import Visualizer from "@/features/visualizer/pages/Visualizer.jsx";
 import TileSwapPanel from "@/features/catalogue/components/TileSwapPanel.jsx";
@@ -11,18 +12,19 @@ import TileCatalogue from "@/features/catalogue/pages/TileCatalogue.jsx";
 import ProfileDropdown from "@/components/ProfileDropdown.jsx";
 
 export default function Dashboard() {
-  const { resetAll, layoutId, setRoom, setLayout } = useWorkspace();
+  const { resetAll, layout, layoutId, room, setRoom, setLayout } = useWorkspace();
   const navigate = useNavigate();
   const [present, setPresent] = useState(false);
   const [showCatalogue, setShowCatalogue] = useState(false);
 
-  // Step 2 (layout picker) — shared by the room pills and the Select Room modal.
+  // Step 2 (layout picker) — shared by the room pills, the Select Room modal,
+  // and the always-visible layout switcher in the toolbar.
   const [pickerRoom, setPickerRoom] = useState(null);
   const {
     layouts: roomLayouts,
     isLoading: layoutsLoading,
     isError: layoutsError,
-  } = useLayoutsByRoom(pickerRoom?.id || null);
+  } = useLayoutsByRoom(room?.id || null);
 
   const closePicker = () => setPickerRoom(null);
 
@@ -100,6 +102,13 @@ export default function Dashboard() {
         {!present && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <RoomSelector onSelectRoom={handleRoomSelect} />
+            <LayoutSwitcher
+              layouts={roomLayouts}
+              activeLayoutId={layout?.id}
+              onSelect={(id) => setLayout(id)}
+              isLoading={layoutsLoading}
+              disabled={!!layoutsError}
+            />
           </div>
         )}
 

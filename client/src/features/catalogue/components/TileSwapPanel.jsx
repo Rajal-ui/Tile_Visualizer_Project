@@ -2,20 +2,36 @@ import { useMemo, useState } from "react";
 import { X, ChevronRight, Grid3X3 } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
 import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
-import { isTileCompatibleWithSurface } from "@/features/catalogue/lib/tile-adapter.js";
+import {
+  isTileCompatibleWithSurface,
+  CATALOGUE_ZONE_TABS,
+} from "@/features/catalogue/lib/tile-adapter.js";
 import { textureThumbnailUrl, textureUrl } from "@/lib/textures.js";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileSwapPanel({ onOpenCatalogue }) {
-  const { room, surfaces, surface, setSurface, activeTile, applyTile, removeTile } = useWorkspace();
+  const {
+    room,
+    surfaces,
+    surface,
+    setSurface,
+    activeTile,
+    applyTile,
+    removeTile,
+    catalogueZone,
+    setCatalogueZone,
+  } = useWorkspace();
   const { tiles: catalogueTiles } = useTiles();
   const [detail, setDetail] = useState(null);
 
+  // Zone filter: the active catalogue tab wins; otherwise fall back to the
+  // surface being edited so the existing per-surface guard still applies.
   const roomTiles = useMemo(() => {
+    const activeZone = catalogueZone === "all" ? surface : catalogueZone;
     return catalogueTiles.filter(
-      (t) => t.rooms.includes(room.id) && isTileCompatibleWithSurface(t, surface)
+      (t) => t.rooms.includes(room.id) && isTileCompatibleWithSurface(t, activeZone)
     );
-  }, [catalogueTiles, room.id, surface]);
+  }, [catalogueTiles, room.id, surface, catalogueZone]);
 
   const surfaceTabs = surfaces.map((s) => ({ key: s, label: s.toUpperCase() }));
 
@@ -82,6 +98,26 @@ export default function TileSwapPanel({ onOpenCatalogue }) {
         >
           Full catalog <ChevronRight size={11} />
         </button>
+      </div>
+
+      {/* Catalogue surface tabs — narrow the quick-swap list by zone */}
+      <div className="flex border-b border-slate-100">
+        {CATALOGUE_ZONE_TABS.map((tab) => {
+          const active = catalogueZone === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setCatalogueZone(tab.key)}
+              aria-pressed={active}
+              className={`relative flex-1 px-2 py-1.5 text-[9px] font-bold tracking-wider transition ${
+                active ? "text-brand-600" : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {tab.label}
+              {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tile Grid */}

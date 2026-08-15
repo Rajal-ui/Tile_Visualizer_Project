@@ -12,8 +12,12 @@ const defaults = {
   roomId: "living-room",
   surface: "Floor",
   applied: {},
+  catalogueZone: "all",
   layoutId: null,
 };
+
+/** Zone keys the catalogue surface tabs can filter by. */
+const KNOWN_ZONES = ["floor", "wall", "counter"];
 
 export function WorkspaceProvider({ children }) {
   const [prefs, setPrefs] = useState(defaults);
@@ -36,12 +40,24 @@ export function WorkspaceProvider({ children }) {
   }, [layout]);
 
   const setRoom = (roomId) => {
-    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null }));
+    setPrefs((p) => ({ ...p, roomId, surface: "Floor", layoutId: null, catalogueZone: "all" }));
   };
 
-  const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
+  // Changing the active surface (surface tabs or a canvas zone click) also
+  // syncs the catalogue's zone tab when the surface maps to a known zone.
+  const setSurface = (surface) =>
+    setPrefs((p) => {
+      const zone = String(surface).toLowerCase();
+      return {
+        ...p,
+        surface,
+        catalogueZone: KNOWN_ZONES.includes(zone) ? zone : p.catalogueZone,
+      };
+    });
 
-  const setSurface = (surface) => setPrefs((p) => ({ ...p, surface }));
+  const setCatalogueZone = (zone) => setPrefs((p) => ({ ...p, catalogueZone: zone }));
+
+  const setLayout = (layoutId) => setPrefs((p) => ({ ...p, layoutId }));
 
   const applyTile = (tileId, surface) =>
     setPrefs((p) => ({
@@ -57,7 +73,7 @@ export function WorkspaceProvider({ children }) {
     });
 
   const resetAll = () =>
-    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null });
+    setPrefs({ roomId: "living-room", surface: "Floor", applied: {}, layoutId: null, catalogueZone: "all" });
 
   const appliedTiles = useMemo(() => {
     const map = {};
@@ -80,6 +96,8 @@ export function WorkspaceProvider({ children }) {
     surfaces,
     surface: prefs.surface,
     setSurface,
+    catalogueZone: prefs.catalogueZone,
+    setCatalogueZone,
     appliedTiles,
     activeTile,
     applyTile,

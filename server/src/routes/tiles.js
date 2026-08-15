@@ -93,24 +93,31 @@ router.get("/", async (req, res) => {
  * and size. Routes through Elasticsearch when `ELASTICSEARCH_NODE` is set
  * (zone-aware via `compatibleZones`), otherwise falls back to the Mongo `$text`
  * index.
+ *
+ * A text query `q` is required unless at least one filter (`zone`, `category`)
+ * is present, so the client can serve zone-only catalogue tab requests through
+ * this endpoint.
  */
 router.get("/search", async (req, res) => {
   try {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    if (!q) {
-      return res.status(400).json({ error: "Missing required query parameter 'q'" });
-    }
 
     const { page, limit } = parsePagination(req.query);
     const skip = (page - 1) * limit;
     const { category, compatibleZone } = req.query;
+    // `zone` is the catalogue-tab param; keep `compatibleZone` as an alias.
+    const zone = typeof req.query.zone === "string" ? req.query.zone : compatibleZone;
+
+    if (!q && !zone && category === undefined) {
+      return res.status(400).json({ error: "Missing required query parameter 'q'" });
+    }
 
     // Elasticsearch path (zone-aware).
     if (esService.isConfigured()) {
       const result = await esService.searchTiles({
         q,
         category: typeof category === "string" ? category : undefined,
-        compatibleZones: typeof compatibleZone === "string" ? [compatibleZone] : undefined,
+        compatibleZones: typeof zone === "string" ? [zone] : undefined,
         from: skip,
         size: limit,
       });
@@ -119,14 +126,23 @@ router.get("/search", async (req, res) => {
       }
     }
 
-    // MongoDB $text fallback.
-    const filter = { $text: { $search: q } };
+    // MongoDB $text fallback (plain compatibleZones filter when no text query).
+    const filter = {};
     if (category) filter.category = category;
-    if (compatibleZone) filter.compatibleZones = compatibleZone;
+    if (zone) {
+      // Legacy tiles without zone metadata stay compatible with any surface,
+      // mirroring the client-side isTileCompatibleWithSurface fallback.
+      filter.$or = [
+        { compatibleZones: zone },
+        { compatibleZones: { $size: 0 } },
+        { compatibleZones: { $exists: false } },
+      ];
+    }
+    if (q) filter.$text = { $search: q };
 
     const [tiles, totalItems] = await Promise.all([
       Tile.find(filter)
-        .sort({ score: { $meta: "textScore" } })
+        .sort(q ? { score: { $meta: "textScore" } } : { createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate("category", "name")

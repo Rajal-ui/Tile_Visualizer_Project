@@ -1,13 +1,15 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { compositeAllZones } from "@/features/visualizer/lib/canvas-compositor.js";
+import { pointInPolygon } from "@/features/visualizer/lib/polygon.js";
 
 /**
  * Canvas renderer for photo-based (2-layer) room layouts.
  *
- * Draws background -> warped+masked tile per zone -> foreground on top, then
- * presents one tab per zone (label derived dynamically from layout.zones).
+ * Draws background -> warped+masked tile per zone -> foreground on top. Clicking
+ * a zone polygon reports the zone's label up through `onSelectZone` so the
+ * active surface/catalogue tab can follow the rep's editing target.
  */
-export default function RoomCanvas({ layout, appliedTiles }) {
+export default function RoomCanvas({ layout, appliedTiles, onSelectZone }) {
   const canvasRef = useRef(null);
   const [rendering, setRendering] = useState(false);
   const [compositeError, setCompositeError] = useState(null);
@@ -27,6 +29,32 @@ export default function RoomCanvas({ layout, appliedTiles }) {
       }),
     [zones, appliedTiles]
   );
+
+  const handleCanvasClick = (e) => {
+    if (!onSelectZone) return;
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.width || !canvas.height) return;
+
+    // Map the pointer to the canvas's internal image coordinates. The element
+    // is letterboxed with object-contain, so undo the uniform scale + offset.
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
+    const x = (e.clientX - rect.left - (rect.width - canvas.width * scale) / 2) / scale;
+    const y = (e.clientY - rect.top - (rect.height - canvas.height * scale) / 2) / scale;
+
+    // Top-most (drawn last) zone wins.
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const zone = zones[i];
+      const hit = (zone.planes || []).some(
+        (p) => (p.polygon || []).length >= 3 && pointInPolygon([x, y], p.polygon)
+      );
+      if (hit) {
+        onSelectZone(zone.label);
+        return;
+      }
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -63,7 +91,8 @@ export default function RoomCanvas({ layout, appliedTiles }) {
       <div className="relative min-h-0 flex-1 items-center justify-center overflow-hidden rounded-b-2xl bg-slate-50">
         <canvas
           ref={canvasRef}
-          className="block h-full w-full object-contain"
+          onClick={handleCanvasClick}
+          className={`block h-full w-full object-contain ${onSelectZone && hasPlanes ? "cursor-pointer" : ""}`}
         />
         {rendering && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">

@@ -82,6 +82,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
     });
     
     res.json({ ok: true, user: admin.toJSON() });
@@ -92,7 +93,7 @@ router.post("/login", authRateLimiter, async (req, res) => {
 });
 
 router.post("/logout", (req, res) => {
-  res.clearCookie("jwt");
+  res.clearCookie("jwt", { path: "/" });
   res.json({ ok: true });
 });
 

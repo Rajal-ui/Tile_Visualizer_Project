@@ -35,22 +35,6 @@ export function normalizeTile(raw) {
 export function isTileCompatibleWithSurface(tile, surface) {
   const zones = tile.compatibleZones || [];
   if (!zones.length) return true;
-  const zoneKey = surfaceToZoneKey(surface);
-  if (!zoneKey) return false;
-  return zones.includes(zoneKey);
-}
-
-/**
- * Map a layout-surface label (zone label, e.g. "Floor", "Wall", "Accent
- * Area", "Counter") to the catalogue zone key understood by the surface tabs
- * and tile search. Accent and backsplash surfaces count as walls so clicking
- * them still contextual-filters the gallery. Returns null when the surface
- * has no catalogue equivalent (no contextual filtering).
- */
-export function surfaceToZoneKey(surface) {
   const label = String(surface).toLowerCase();
-  if (label.includes("counter")) return "counter";
-  if (label.includes("floor")) return "floor";
-  if (label.includes("wall") || label.includes("accent") || label.includes("backsplash")) return "wall";
-  return null;
+  return zones.some((z) => label.includes(z));
 }

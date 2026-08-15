@@ -23,6 +23,7 @@ const TILE_SEED = [
     finish: "Matt",
     price: 1800,
     rooms: ["kitchen", "living-room", "bathroom"],
+    compatibleZones: ["floor"],
   },
   {
     _id: "a00000000000000000000002",
@@ -33,6 +34,7 @@ const TILE_SEED = [
     finish: "Glossy",
     price: 2000,
     rooms: ["kitchen", "bathroom"],
+    compatibleZones: ["floor", "wall"],
   },
   {
     _id: "a00000000000000000000003",
@@ -43,6 +45,7 @@ const TILE_SEED = [
     finish: "Glossy",
     price: 2100,
     rooms: ["bathroom"],
+    compatibleZones: ["floor", "wall", "counter"],
   },
   {
     _id: "a00000000000000000000004",
@@ -53,6 +56,7 @@ const TILE_SEED = [
     finish: "Rustic",
     price: 2500,
     rooms: ["living-room", "bedroom"],
+    compatibleZones: [],
   },
 ];
 
@@ -67,6 +71,7 @@ function tileMatches(tile, filter = {}) {
   if (filter.size && tile.size !== filter.size) return false;
   if (filter.material && tile.material !== filter.material) return false;
   if (filter.finish && tile.finish !== filter.finish) return false;
+  if (filter.$or && !filter.$or.some((clause) => clauseMatchesZone(tile, clause))) return false;
   if (filter.$text && filter.$text.$search) {
     const q = String(filter.$text.$search).toLowerCase();
     const haystack = [tile.title, tile.material, tile.finish, tile.size]
@@ -76,6 +81,24 @@ function tileMatches(tile, filter = {}) {
     if (!haystack.includes(q)) return false;
   }
   return true;
+}
+
+/**
+ * Mirrors the route's zone `$or` clauses: a tile matches when its
+ * compatibleZones include the zone, or when it has no zone metadata at all
+ * (empty/missing arrays are compatible with every surface).
+ */
+function clauseMatchesZone(tile, clause) {
+  if (clause.compatibleZones === undefined) return true;
+  const z = clause.compatibleZones;
+  const tileZones = tile.compatibleZones || [];
+  if (tileZones.length === 0) return true;
+  if (typeof z === "object" && z !== null && !Array.isArray(z)) {
+    if (z.$size === 0) return tileZones.length === 0;
+    if (z.$exists === false) return tile.compatibleZones === undefined;
+    return true;
+  }
+  return tileZones.includes(z);
 }
 
 const adminToken = jwt.sign({ id: "admin-001" }, JWT_SECRET, { expiresIn: "1h" });
@@ -291,6 +314,39 @@ test("GET /api/v1/tiles/search returns empty data for no matches", async () => {
   assert.deepEqual(res.json.data, []);
   assert.equal(res.json.pagination.totalItems, 0);
   assert.equal(res.json.pagination.totalPages, 0);
+});
+
+test("GET /api/v1/tiles/search filters by zone without a query", async () => {
+  // Friesland + Thorn declare "wall"; Oak Plank has no zone metadata yet is
+  // compatible with every surface (empty compatibleZones -> all).
+  const wall = await requestJson(`${baseUrl}/api/v1/tiles/search?zone=wall`);
+  assert.equal(wall.status, 200);
+  assert.equal(wall.json.data.length, 3);
+  assert.ok(
+    wall.json.data.every((t) => {
+      const zones = t.compatibleZones || [];
+      return zones.length === 0 || zones.includes("wall");
+    })
+  );
+
+  const counter = await requestJson(`${baseUrl}/api/v1/tiles/search?zone=counter`);
+  assert.equal(counter.status, 200);
+  assert.equal(counter.json.data.length, 2); // Thorn + Oak Plank
+  assert.equal(counter.json.data[0].title, "Iridium Thorn White");
+});
+
+test("GET /api/v1/tiles/search accepts the compatibleZone alias", async () => {
+  const res = await requestJson(`${baseUrl}/api/v1/tiles/search?compatibleZone=counter`);
+  assert.equal(res.status, 200);
+  assert.equal(res.json.data.length, 2); // Thorn + Oak Plank
+  assert.equal(res.json.data[0].title, "Iridium Thorn White");
+});
+
+test("GET /api/v1/tiles/search combines a query with a zone filter", async () => {
+  const res = await requestJson(`${baseUrl}/api/v1/tiles/search?q=porcelain&zone=wall`);
+  assert.equal(res.status, 200);
+  assert.equal(res.json.data.length, 2);
+  assert.ok(res.json.data.every((t) => (t.compatibleZones || []).includes("wall")));
 });
 
 // ---------------------------------------------------------------------------

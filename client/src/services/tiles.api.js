@@ -15,6 +15,20 @@ export async function fetchTiles({ search, category, page = 1, limit = 50 } = {}
   return { data: data?.data || [], pagination: data?.pagination };
 }
 
+/**
+ * GET /api/v1/tiles/search — text + zone search. `zone` filters by tile
+ * `compatibleZones` (floor/wall/counter); routed through Elasticsearch when
+ * configured, otherwise the Mongo $text/compatibleZones fallback.
+ */
+export async function searchTiles({ q, zone, category, page = 1, limit = 20 } = {}) {
+  const params = { page, limit };
+  if (q) params.q = q;
+  if (zone && zone !== "all") params.zone = zone;
+  if (category && category !== "all") params.category = category;
+  const data = await apiClient.get("/api/v1/tiles/search", { params });
+  return { data: data?.data || [], pagination: data?.pagination };
+}
+
 /** POST /api/v1/tiles — create tile (admin). */
 export async function createTile(payload) {
   const data = await apiClient.post("/api/v1/tiles", payload);

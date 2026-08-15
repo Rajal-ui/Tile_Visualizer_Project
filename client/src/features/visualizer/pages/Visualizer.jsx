@@ -128,7 +128,7 @@ function PhotoViewer({ room, floorTile }) {
 
 
 export default function Visualizer({ present = false }) {
-  const { room, appliedTiles } = useWorkspace();
+  const { room, appliedTiles, setSurface } = useWorkspace();
   const layout = useLayout(room.layout || null);
   const floorTile = appliedTiles["Floor"] || null;
 
@@ -140,6 +140,7 @@ export default function Visualizer({ present = false }) {
           <RoomCanvas
             layout={layout}
             appliedTiles={appliedTiles}
+            onSelectZone={setSurface}
           />
         ) : (
           <PhotoViewer room={room} floorTile={floorTile} />

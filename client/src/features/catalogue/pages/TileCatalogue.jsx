@@ -1,43 +1,36 @@
 import { useMemo, useState } from "react";
-import { Search, Grid3X3 } from "lucide-react";
+import { Search } from "lucide-react";
 import { useWorkspace } from "@/store/workspace.context.jsx";
-import { useTiles } from "@/features/catalogue/hooks/useTiles.js";
+import { useTileSearch } from "@/features/catalogue/hooks/useTileSearch.js";
+import { CATALOGUE_ZONE_TABS } from "@/features/catalogue/lib/tile-adapter.js";
 import TileCard from "@/features/catalogue/components/TileCard.jsx";
 import TileModal from "@/features/catalogue/components/TileModal.jsx";
 
 export default function TileCatalogue() {
-  const { surface, applyTile } = useWorkspace();
-  const { tiles } = useTiles();
+  const { surface, applyTile, catalogueZone, setCatalogueZone } = useWorkspace();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("all");
   const [finish, setFinish] = useState("All Finishes");
   const [material, setMaterial] = useState("All Materials");
   const [detail, setDetail] = useState(null);
 
-  const { categories, finishes, materials } = useMemo(() => {
-    const cats = [...new Set(tiles.map((t) => t.category))].sort();
+  const { tiles, isSearching } = useTileSearch({ q: query, zone: catalogueZone });
+
+  const { finishes, materials } = useMemo(() => {
     const fin = [...new Set(tiles.map((t) => t.finish))].sort();
     const mat = [...new Set(tiles.map((t) => t.material))].sort();
     return {
-      categories: ["all", ...cats],
       finishes: ["All Finishes", ...fin],
       materials: ["All Materials", ...mat],
     };
   }, [tiles]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  const displayed = useMemo(() => {
     return tiles.filter((t) => {
-      if (category !== "all" && t.category !== category) return false;
       if (finish !== "All Finishes" && t.finish !== finish) return false;
       if (material !== "All Materials" && t.material !== material) return false;
-      if (q && !`${t.name} ${t.material} ${t.finish} ${t.size} ${t.category}`.toLowerCase().includes(q))
-        return false;
       return true;
     });
-  }, [tiles, query, category, finish, material]);
-
-  const displayed = filtered;
+  }, [tiles, finish, material]);
 
   return (
     <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 transition-colors">
@@ -52,33 +45,40 @@ export default function TileCatalogue() {
         </div>
       </div>
 
-      <div className="relative mb-2">
-        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          className="input-field pl-8 text-xs"
-          placeholder="Search tiles, materials…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-
+      {/* Surface tabs — match the visualizer's zone-selection metaphor */}
       <div className="tile-scrollbar -mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-0.5">
-        {categories.map((cat) => {
-          const active = category === cat;
+        {CATALOGUE_ZONE_TABS.map((tab) => {
+          const active = catalogueZone === tab.key;
           return (
             <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${
+              key={tab.key}
+              onClick={() => setCatalogueZone(tab.key)}
+              aria-pressed={active}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-semibold transition ${
                 active
                   ? "bg-brand-600 text-white shadow-card"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {cat === "all" ? "All" : cat}
+              {tab.label}
             </button>
           );
         })}
+      </div>
+
+      <div className="relative mb-2">
+        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          className="input-field pl-8 pr-14 text-xs"
+          placeholder="Search tiles, materials…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {isSearching && (
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-slate-400">
+            Searching…
+          </span>
+        )}
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1.5">
@@ -112,7 +112,9 @@ export default function TileCatalogue() {
         }`}
       >
         {displayed.length === 0 && (
-          <div className="text-center text-xs text-slate-400">No tiles match your filters.</div>
+          <div className="text-center text-xs text-slate-400">
+            No tiles match your filters for this surface.
+          </div>
         )}
         {displayed.map((tile) => (
           <TileCard

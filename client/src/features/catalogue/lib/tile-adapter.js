@@ -1,12 +1,21 @@
 export const DEFAULT_GROUT = "#c6cbd3";
 
+/** Catalogue surface tabs (zone compatibility filter). */
+export const CATALOGUE_ZONE_TABS = [
+  { key: "all", label: "All" },
+  { key: "floor", label: "Floor" },
+  { key: "wall", label: "Wall" },
+  { key: "counter", label: "Counter" },
+];
+
 export function normalizeTile(raw) {
   return {
-    id: raw._id,
+    id: raw._id ?? raw.id,
     name: raw.title,
     sku: raw.sku,
     colorTag: raw.colorTag,
-    category: raw.category?.name || "Tile",
+    // ES `_source` carries the category id + name separately.
+    category: raw.category?.name || raw.categoryName || "Tile",
     material: raw.material,
     finish: raw.finish,
     size: raw.size,

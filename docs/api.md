@@ -51,7 +51,8 @@ Routers are mounted in `server/src/app.js` (`/api/v1/tiles`).
 | `size`     | string | Exact match on `size`                            |
 | `material` | string | Exact match on `material`                        |
 | `finish`   | string | Exact match on `finish`                          |
-| `q`        | string | Search term (`search` only, required)            |
+| `q`        | string | Search term (`search` only). Required unless `zone`/`category` is given |
+| `zone`     | string | Filter by tile `compatibleZones` — `floor`, `wall`, or `counter` (`search` only). `compatibleZone` is accepted as an alias |
 | `page`     | number | 1-based page (default `1`)                       |
 | `limit`    | number | Items per page (default `20`, max `100`)         |
 
